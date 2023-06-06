@@ -16,7 +16,7 @@ streamed don't quite have enough info to performantly 'skip' shards.
 class HuggingfaceStreamDataset(IterableDataset):
     def __init__(self, huggingface_name, skip_to=0):
         self.huggingface_name = huggingface_name
-        self.global_index = skip_to
+        self.skip_to = skip_to
 
         # start by getting the config
         config_file = hf_hub_download(
@@ -36,7 +36,7 @@ class HuggingfaceStreamDataset(IterableDataset):
         self.shards = {}
         
         # prefetch the first shard
-        self.load_shard(self.global_index // self.shard_size)
+        self.load_shard(self.skip_to // self.shard_size)
 
     def load_shard(self, shard_id):
         print(f"Loading shard {shard_id}")
@@ -57,11 +57,11 @@ class HuggingfaceStreamDataset(IterableDataset):
             offset = worker_info.id
             increase = worker_info.num_workers
 
-        self.global_index += offset
+        global_index = offset + self.skip_to
 
-        while self.global_index < self.dataset_length:
-            shard_id = self.global_index // self.shard_size
-            shard_offset = self.global_index % self.shard_size
+        while global_index < self.dataset_length:
+            shard_id = global_index // self.shard_size
+            shard_offset = global_index % self.shard_size
 
             if shard_id not in self.shards:
                 self.load_shard(shard_id)
@@ -73,7 +73,7 @@ class HuggingfaceStreamDataset(IterableDataset):
         
             yield shard.iloc[shard_offset]
             
-            self.global_index += increase
+            global_index += increase
 
 
 from typing import Iterator
@@ -92,3 +92,11 @@ class TokenizedDatasetWrapper(IterableDataset):
 
 def collate_fn(batch):
     return (batch,)
+
+# EXAMPLE USAGE
+# from torch.utils.data import DataLoader
+# from stream_dataset import HuggingfaceStreamDataset, TokenizedDatasetWrapper, collate_fn
+
+# dataset = TokenizedDatasetWrapper(HuggingfaceStreamDataset("ZelaAI/minipile_test", skip_to=5000))
+
+# dataloader = DataLoader(dataset, batch_size=2, num_workers=2, collate_fn=collate_fn)
