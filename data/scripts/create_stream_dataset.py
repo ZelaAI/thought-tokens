@@ -3,9 +3,9 @@ This script loads a Huggingface Dataset, manually shards it, and uploads it to a
 
 For use with `data/stream_dataset.py`
 """
-source_dataset_repo_id = "alexedw/minipile_recreation_tiny"
-num_shards = 10
-destination_dataset_repo_id = "ZelaAI/minipile_test"
+source_dataset_repo_id = "ZelaAI/minipile_512"
+num_shards = 500
+destination_dataset_repo_id = "ZelaAI/minipile_512_streamable"
 
 import os
 import math
