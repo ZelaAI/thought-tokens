@@ -1,0 +1,4 @@
+datasets
+transformers
+wandb
+huggingface_hub
