@@ -64,9 +64,9 @@ class HuggingfaceStreamDataset(IterableDataset):
             shard_offset = self.global_index % self.shard_size
 
             if shard_id not in self.shards:
-                raise ValueError(f"Unexpected: Shard {shard_id} not loaded!")
-            if shard_id + 1 not in self.shards and shard_id + 1 < self.num_shards:
-                # ensure we prefetch the next shard to keep things fast
+                self.load_shard(shard_id)
+            if worker_info.id == 0 and shard_id + 1 not in self.shards and shard_id + 1 < self.num_shards:
+                # download the next shard to keep things fast
                 self.load_shard(shard_id + 1)
 
             shard = self.shards[shard_id]
@@ -76,4 +76,19 @@ class HuggingfaceStreamDataset(IterableDataset):
             self.global_index += increase
 
 
-stream_dataset = HuggingfaceStreamDataset("ZelaAI/minipile_test")
+from typing import Iterator
+from transformers import GPTNeoXTokenizerFast
+from torch.utils.data import IterableDataset
+
+class TokenizedDatasetWrapper(IterableDataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self.tokenizer = GPTNeoXTokenizerFast.from_pretrained("EleutherAI/pythia-410m")
+
+    def __iter__(self) -> Iterator:
+        for item in self.dataset:
+            yield self.tokenizer.encode(item['text'])
+            
+
+def collate_fn(batch):
+    return (batch,)
