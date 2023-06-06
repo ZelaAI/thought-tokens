@@ -4,7 +4,7 @@ This script loads a Huggingface Dataset, manually shards it, and uploads it to a
 For use with `data/stream_dataset.py`
 """
 source_dataset_repo_id = "ZelaAI/minipile_512"
-num_shards = 500
+num_shards = 300
 destination_dataset_repo_id = "ZelaAI/minipile_512_streamable"
 
 import os
@@ -40,11 +40,20 @@ api = HfApi()
 
 print("Uploading to HuggingFace Hub...")
 api.create_repo(repo_id=destination_dataset_repo_id, exist_ok=True, repo_type="dataset")
-api.upload_folder(
-    repo_id=destination_dataset_repo_id,
-    folder_path="dataset_upload.ignore",
-    repo_type="dataset",
-)
+
+
+for i in range(num_shards//10):
+    # break up into chunks to avoid timeouts
+    allow_patterns = [f"shard_{shard_id}.parquet" for shard_id in range(i*10, (i+1)*10)] + ["config.json"]
+
+    print(f"Uploading shards {i*10} to {(i+1)*10}...")
+
+    api.upload_folder(
+        repo_id=destination_dataset_repo_id,
+        folder_path="dataset_upload.ignore",
+        repo_type="dataset",
+        allow_patterns=allow_patterns
+    )
 
 print("Cleaning up....")
 os.remove("dataset_upload.ignore/config.json")
