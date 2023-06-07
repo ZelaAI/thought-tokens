@@ -4,6 +4,8 @@ from heapq import heappush, heappop
 from typing import List
 from tqdm import tqdm
 
+from data.sequence import Sequence
+
 class Packer(IterableDataset):
     length_map = defaultdict(list)
     current_max_length = 0
@@ -20,7 +22,7 @@ class Packer(IterableDataset):
         self.max_seq_len = max_seq_len
         self.add_to_queue(items)
 
-    def add_to_queue(self, items: List):
+    def add_to_queue(self, items: List[Sequence]):
         for item in items:
             heappush(self.length_map[item.length], item)
             self.current_max_length = max(self.current_max_length, item.length)
@@ -28,7 +30,7 @@ class Packer(IterableDataset):
     def __iter__(self):
         return self
 
-    def __next__(self) -> List:        
+    def __next__(self) -> List[Sequence]:        
         pack = []
         pack_length = 0
         

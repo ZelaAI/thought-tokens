@@ -74,29 +74,3 @@ class HuggingfaceStreamDataset(IterableDataset):
             yield shard.iloc[shard_offset]
             
             global_index += increase
-
-
-from typing import Iterator
-from transformers import GPTNeoXTokenizerFast
-from torch.utils.data import IterableDataset
-
-class TokenizedDatasetWrapper(IterableDataset):
-    def __init__(self, dataset):
-        self.dataset = dataset
-        self.tokenizer = GPTNeoXTokenizerFast.from_pretrained("EleutherAI/pythia-410m")
-
-    def __iter__(self) -> Iterator:
-        for item in self.dataset:
-            yield self.tokenizer.encode(item['text'])
-            
-
-def collate_fn(batch):
-    return (batch,)
-
-# EXAMPLE USAGE
-# from torch.utils.data import DataLoader
-# from stream_dataset import HuggingfaceStreamDataset, TokenizedDatasetWrapper, collate_fn
-
-# dataset = TokenizedDatasetWrapper(HuggingfaceStreamDataset("ZelaAI/minipile_test", skip_to=5000))
-
-# dataloader = DataLoader(dataset, batch_size=2, num_workers=2, collate_fn=collate_fn)
