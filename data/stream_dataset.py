@@ -1,5 +1,5 @@
 from torch.utils.data import IterableDataset
-from huggingface_hub import hf_hub_download
+from huggingface_hub.file_download import hf_hub_download
 import pandas as pd
 import torch
 import math
@@ -24,6 +24,7 @@ class HuggingfaceStreamDataset(IterableDataset):
             filename="config.json",
             repo_type="dataset",
         )
+        assert config_file is not None, f"Couldn't find config.json in {self.huggingface_name}"
         
         with open(config_file, "r") as f:
             config = json.load(f)
@@ -45,10 +46,11 @@ class HuggingfaceStreamDataset(IterableDataset):
             filename=f"shard_{shard_id}.parquet",
             repo_type="dataset",
         )
+        assert shard_file is not None, f"Couldn't find shard_{shard_id}.parquet in {self.huggingface_name}"
         self.shards[shard_id] = pd.read_parquet(shard_file)
 
     def __iter__(self):
-        worker_info = torch.utils.data.get_worker_info()
+        worker_info = torch.utils.data.get_worker_info() # type: ignore
 
         if worker_info is None:
             offset = 0
@@ -71,6 +73,6 @@ class HuggingfaceStreamDataset(IterableDataset):
 
             shard = self.shards[shard_id]
         
-            yield shard.iloc[shard_offset]
+            yield shard.iloc[shard_offset]['tokens']
             
             global_index += increase
