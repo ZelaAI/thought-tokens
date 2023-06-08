@@ -7,7 +7,6 @@ import math
 from collections import defaultdict
 import torch
 from typing import List
-import functools
 from data.sequence import Sequence
 
 from data.utils import ModelTester
@@ -21,14 +20,9 @@ class ModelTester:
         self.append_dense_tokens = append_dense_tokens
         self.max_seq_len = max_seq_len
     
-    @functools.lru_cache(maxsize=None)
-    def _cached_encode(self, value):
-        return self.tokenizer.encode(value)
-
-    def encode(self, value):
-        cached_result = self._cached_encode(value)
-        return torch.tensor(cached_result, dtype=torch.long)
-
+    def encode(self, text):
+        return self.tokenizer.encode(text)
+    
     def decode(self, tokens):
         return self.tokenizer.decode(tokens).replace("<|dense|>", "")
     

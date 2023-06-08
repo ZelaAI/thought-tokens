@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import torch
 from typing import List
 
-from model import DENSE_TOKEN_ID
+from core.model import DENSE_TOKEN_ID
 
 @dataclass
 class Sequence:
@@ -10,8 +10,6 @@ class Sequence:
     context: torch.Tensor
     max_new_tokens: int
     completions: List[torch.Tensor]
-    loglikelihoods: List[torch.Tensor] = None
-    length: int = 0
 
     def __post_init__(self):
         self.length = len(self.context) + sum([len(c) for c in self.completions])
