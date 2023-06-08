@@ -5,6 +5,7 @@ Uses Andrej Karpathy's nanoGPT and Huggingface/EleutherAI's GPTNeoX as starting 
 import math
 import inspect
 from dataclasses import dataclass
+import functools
 
 import torch
 import torch.nn as nn
@@ -23,9 +24,14 @@ class Tokenizer:
         self.dense_token_id = self.tokenizer.encode('<|dense|>')[0]
         
         assert DENSE_TOKEN_ID == self.dense_token_id
-        
-    def encode(self, text):
-        return self.tokenizer.encode(text)
+    
+    @functools.lru_cache(maxsize=None)
+    def _cached_encode(self, value):
+        return self.tokenizer.encode(value)
+
+    def encode(self, value):
+        cached_result = self._cached_encode(value)
+        return torch.tensor(cached_result, dtype=torch.long)
     
     def decode(self, ids):
         return self.tokenizer.decode(ids, skip_special_tokens=True)

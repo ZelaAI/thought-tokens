@@ -22,7 +22,7 @@ from data.evals.evals import TestAll
 from data.utils import Batch, ModelTester, Packer, TokensPerSecondTimer, report_logits
 from multiprocessing import Process
 
-from model import GPTConfig, GPT, Tokenizer
+from core.model import GPTConfig, GPT, Tokenizer
 import random
 
 def mint_names():
