@@ -1,11 +1,11 @@
 # Running Infra
-This just contains some helpful scripts to run instances on [RunPod](https://runpod.io).
+This directory contains a collection of useful scripts designed to help with running instances on [RunPod](https://runpod.io).
 
-Not intended to be super reusable, but feel free to use. Connects to a spot instance on RunPod, sets up this repository, and runs a python script.
+While not primarily designed for reuse, feel free to adapt the scripts to your needs. The main functionality involves connecting to a spot instance on RunPod, setting up this repository, and executing a Python script.
 
 ## Setup
 
-Expects a `runpod.ignore.txt` file within this directory with the following format:
+For this to work, a `runpod.ignore.txt` file is required in this directory, adhering to the following format:
 
 ```
 <RUNPOD_API_KEY>
@@ -13,7 +13,7 @@ Expects a `runpod.ignore.txt` file within this directory with the following form
 <SSH_PUBLIC_KEY>
 ```
 
-For example
+For instance:
 
 ```
 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
@@ -21,7 +21,7 @@ hunter2
 ssh-rsa AAAAB3NzaC1yc2E
 ```
 
-Also expects a `remote.ignore.txt` file within this directory, which is the template for the commands we'll execute automatically on connection to the remote instance. My template looks like this:
+Similarly, a `remote.ignore.txt` file is also expected within this directory. This file serves as the template for the commands that will be automatically executed upon connecting to the remote instance. A sample template could look like this:
 
 ```
 cd /workspace
@@ -35,26 +35,27 @@ wandb login wandb_token_goes_here
 python {script_path}
 ```
 
-{branch} and {script_path} will be replaced with the branch and script path you pass as arguments to `runpod.py`.
+In this template, `{branch}` and `{script_path}` are placeholders that will be replaced with the actual branch and script path passed as arguments to `runpod.py`.
 
 ## Usage
 
-Run the `runpod.py` script with the following arguments to:
-1. Start a new instance
-2. Connect and setup the instance
-3. Run a python script on the instance
-4. Automatically terminate the instance when the script finishes or errors (can be disabled with the `debug` flag)
+To utilize these scripts, run `runpod.py` with the following arguments to:
+1. Initiate a new instance,
+2. Connect to and set up the instance,
+3. Execute a Python script on the instance,
+4. Automatically terminate the instance once the script execution completes or encounters an error (this can be disabled using the `debug` flag).
 
+Execute the following command:
 ```bash
 python infra/runpod.py <branch> <python_script_path> [debug]
 ```
 
-For example...
+For example:
 ```bash
 python infra/runpod.py main config/evals.py
 ```
 
-or with debug mode enabled...
+Or to enable debug mode:
 ```bash
 python infra/runpod.py main config/evals.py debug
 ```
