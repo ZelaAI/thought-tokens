@@ -1,5 +1,5 @@
 {
-    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.typeCheckingMode": "basic",
     "files.exclude": {
         "**/__pycache__": true,
         "**/.ipynb_checkpoints": true

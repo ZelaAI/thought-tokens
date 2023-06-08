@@ -1,12 +1,13 @@
+from dataclasses import dataclass
 import sys
 sys.path.append('../..')
 from data.packer import Packer
 import pytest
 
+@dataclass
 class Sequence:
-    def __init__(self, length, max_new_tokens):
-        self.length = length
-        self.max_new_tokens = max_new_tokens
+    length: int
+    max_new_tokens: int
 
     def __lt__(self, other):
         return self.max_new_tokens >= other.max_new_tokens
