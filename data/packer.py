@@ -22,7 +22,6 @@ from tqdm import tqdm
 from data.sequence import Sequence
 
 class Packer(IterableDataset):
-    length_map = defaultdict(list)
     current_max_length = 0
     
     done = False
@@ -34,6 +33,7 @@ class Packer(IterableDataset):
         return f"<Packer: {self.stat_total_packs} packs, {self.stat_total_tokens} tokens, {self.stat_total_tokens / (self.max_seq_len * self.stat_total_packs) * 100:.2f}% efficiency>"
     
     def __init__(self, max_seq_len, items = []):
+        self.length_map = defaultdict(list)
         self.max_seq_len = max_seq_len
         self.add_to_queue(items)
 
