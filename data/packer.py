@@ -1,3 +1,18 @@
+"""
+Packer is a specialized class that dynamically consolidates sequences of tokens into 'packs' of a maximum designated length, `max_seq_len`.
+
+As an example, given a list of sequences with lengths [10, 5, 3, 3] and `max_seq_len` of 10, 
+the Packer would efficiently group the sequences into packs as follows: [10], [5, 3], [3]. 
+
+The packing efficiency of this example would be calculated as (10+5+3+3)/(10*3) = 70%. 
+This represents the proportion of tokens that are not padding tokens, meaning that only 30% are padding tokens. 
+
+With a reasonable number of sequences for packing, this Packer can maintain a packing efficiency of over 99%.
+
+What sets this Packer apart from other packing implementations is its ability to maintain high packing efficiency without needing the entire dataset upfront.
+This feature makes it particularly useful for generation tasks, which involve dynamic addition of tokens to each sequence and repeatedly requeueing them into the Packer.
+"""
+
 from torch.utils.data import IterableDataset
 from collections import defaultdict
 from heapq import heappush, heappop
