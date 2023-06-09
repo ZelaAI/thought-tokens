@@ -22,6 +22,22 @@ class TrainSequence(Sequence):
 
         return top, bottom
 
+    def add_dense_tokens(self):
+        pass
+        # num_to_insert = random.randint(1, self.insert_dense_tokens)
+
+        # # enforce never more than 1/3 of the sequence is dense tokens
+        # num_to_insert = min(num_to_insert, len(completion_ids)//3)
+
+        # # shorten completion_ids to make room for dense tokens
+        # completion_ids = completion_ids[:-num_to_insert]
+
+        # # perform insertions
+        # for i in range(num_to_insert):
+        #     index = random.randint(0, len(completion_ids))
+        #     completion_ids.insert(index, DENSE_TOKEN_ID)
+
+
 @dataclass
 class TrainBatch:
     """

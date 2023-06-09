@@ -32,7 +32,7 @@ pip install -r requirements.txt
 huggingface-cli login --token hf_token_goes_here
 wandb login wandb_token_goes_here
 
-python {script_path}
+python -m {script_path}
 ```
 
 In this template, `{branch}` and `{script_path}` are placeholders that will be replaced with the actual branch and script path passed as arguments to `runpod.py`.
@@ -52,10 +52,10 @@ python infra/runpod.py <branch> <python_script_path> [debug]
 
 For example:
 ```bash
-python infra/runpod.py main config/evals.py
+python infra/runpod.py main config.evals
 ```
 
 Or to enable debug mode:
 ```bash
-python infra/runpod.py main config/evals.py debug
+python infra/runpod.py main config.evals debug
 ```
