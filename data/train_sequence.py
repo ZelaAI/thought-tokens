@@ -23,6 +23,8 @@ class TrainSequence(Sequence):
             self.inputs = torch.cat([self.inputs, torch.zeros(max_seq_len - len(self.inputs), dtype=torch.long)])
             self.targets = torch.cat([self.targets, -torch.ones(max_seq_len - len(self.targets), dtype=torch.long)])
         
+        self.targets[torch.eq(self.targets, THOUGHT_TOKEN_ID)] = -1
+        
         self.length = len(self.inputs)
 
     def __str__(self):
