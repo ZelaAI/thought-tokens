@@ -1,6 +1,6 @@
 import pytest
 from core.model import Tokenizer
-from data.sequence import Sequence
+from data.eval_sequence import EvalSequence
 import torch
 
 @pytest.fixture
@@ -8,16 +8,16 @@ def prepare_data():
     t = Tokenizer()
     
     sequences = {
-        'a': Sequence(0, context=t.encode("Question: 4+6= Answer:"), 
+        'a': EvalSequence(0, context=t.encode("Question: 4+6= Answer:"), 
                       completions=[t.encode(' 10'), t.encode(' 12'), t.encode(' cat in the hat')],
                       max_new_tokens=0),
-        'b': Sequence(0, context=t.encode("Question: Who is the CEO of SpaceX?\nAnswer: Elon Musk\nQuestion: Who is the president of the United States?\nAnswer:"), 
+        'b': EvalSequence(0, context=t.encode("Question: Who is the CEO of SpaceX?\nAnswer: Elon Musk\nQuestion: Who is the president of the United States?\nAnswer:"), 
                       completions=[t.encode('')], 
                       max_new_tokens=3),
-        'c': Sequence(0, context=t.encode("Question: Are you an AGI? Answer:"), 
+        'c': EvalSequence(0, context=t.encode("Question: Are you an AGI? Answer:"), 
                       completions=[t.encode(' Yes I am.')], 
                       max_new_tokens=0),
-        'd': Sequence(0, context=t.encode('"Hello there..." said Obi-Wan Kenobi.'), 
+        'd': EvalSequence(0, context=t.encode('"Hello there..." said Obi-Wan Kenobi.'), 
                       completions=[t.encode(''), t.encode('')], 
                       max_new_tokens=15)
     }

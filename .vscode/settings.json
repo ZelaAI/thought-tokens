@@ -1,12 +1,13 @@
 {
-    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.typeCheckingMode": "off",
     "files.exclude": {
         "**/__pycache__": true,
         "**/.ipynb_checkpoints": true,
         "**/.pytest_cache": true,
     },
     "python.testing.pytestArgs": [
-        "tests"
+        "tests",
+        "-n", "4",
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
