@@ -4,7 +4,6 @@ import time
 import math
 from contextlib import nullcontext
 
-from data.stream import SequenceStreamDataset
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import torch
@@ -18,8 +17,10 @@ from huggingface_hub import hf_hub_download
 import json
 
 from tqdm import tqdm
-from data.evals.evals import TestAll
-from data.utils import Batch, ModelTester, Packer, TokensPerSecondTimer, report_logits
+from data.evals import TestAll
+from data.eval_sequence import EvalSequence, EvalBatch, report_logits
+from data.train_sequence import TrainSequence, TrainBatch
+
 from multiprocessing import Process
 
 from core.model import GPTConfig, GPT, Tokenizer

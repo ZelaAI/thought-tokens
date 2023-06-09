@@ -13,6 +13,9 @@ class TrainSequence(Sequence):
         self.targets = tokens[1:]
         self.length = len(self.inputs)
 
+    def __str__(self):
+        return f"<TrainSequence length={self.length} inputs={self.inputs}, targets={self.targets}>"
+
     def get_attn_mask_bounds(self):
         top = torch.arange(self.length, dtype=torch.long)
         bottom = torch.ones(self.length, dtype=torch.long) * (self.length - 1)
@@ -40,20 +43,15 @@ class TrainBatch:
         return self
 
     @classmethod
-    def packs_to_batch_factory(cls, max_seq_len, batch_size):
-        def packs_to_batch(sequences: List[TrainSequence]):
-            bs, T = batch_size, max_seq_len
-            
-            inputs = torch.stack([seq.inputs for seq in sequences])
-            targets = torch.stack([seq.targets for seq in sequences])
-            
-            tops, bottoms = zip(*[seq.get_attn_mask_bounds() for seq in sequences])
+    def collate_fn(cls, sequences: List[TrainSequence]):
+        inputs = torch.stack([seq.inputs for seq in sequences])
+        targets = torch.stack([seq.targets for seq in sequences])
         
-            attn_mask_bound_top = torch.stack(tops)
-            attn_mask_bound_bottom = torch.stack(bottoms)
-            
-            max_dense_tokens = 0
-            
-            return TrainBatch(inputs, targets, attn_mask_bound_top, attn_mask_bound_bottom, max_dense_tokens)
+        tops, bottoms = zip(*[seq.get_attn_mask_bounds() for seq in sequences])
+    
+        attn_mask_bound_top = torch.stack(tops)
+        attn_mask_bound_bottom = torch.stack(bottoms)
         
-        return packs_to_batch
+        max_dense_tokens = 0
+        
+        return TrainBatch(inputs, targets, attn_mask_bound_top, attn_mask_bound_bottom, max_dense_tokens)

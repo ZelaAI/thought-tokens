@@ -5,6 +5,7 @@ import torch
 import math
 import json
 
+from data.train_sequence import TrainSequence
 
 """
 This is a custom IterableDataset that manually loads shards from a HuggingFace Hub
@@ -73,6 +74,8 @@ class HuggingfaceStreamDataset(IterableDataset):
 
             shard = self.shards[shard_id]
         
-            yield shard.iloc[shard_offset]['tokens']
+            tokens = torch.tensor(shard.iloc[shard_offset]['tokens'])
+        
+            yield TrainSequence(tokens)
             
             global_index += increase
