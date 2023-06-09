@@ -37,7 +37,7 @@ class TrainSequence(Sequence):
         return top, bottom
 
     def add_thought_tokens(self, tokens: torch.Tensor):
-        num_to_insert = 12
+        num_to_insert = 32
         short_tokens = tokens[:-num_to_insert]
 
         for _ in range(num_to_insert):
