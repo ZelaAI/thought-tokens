@@ -13,6 +13,9 @@ class TrainSequence(Sequence):
     Does not support masking between sequences or anything fancy
     """
     def __init__(self, tokens):
+        
+        tokens = self.add_thought_tokens(tokens)
+        
         self.inputs = tokens[:-1]
         self.targets = tokens[1:]
         
@@ -31,16 +34,18 @@ class TrainSequence(Sequence):
 
         return top, bottom
 
-    def add_thought_tokens(self, tokens):
+    def add_thought_tokens(self, tokens: torch.Tensor):
         num_to_insert = 12
         short_tokens = tokens[:-num_to_insert]
-        
-        for i in range(num_to_insert):
-            index = random.randint(0, len(short_tokens))
-            short_tokens.insert(index, THOUGHT_TOKEN_ID)
-        
-        return short_tokens
 
+        for _ in range(num_to_insert):
+            index = torch.randint(0, len(short_tokens) + 1, (1,))  # get random index
+            left, right = short_tokens.split([index, len(short_tokens) - index])  # split tensor
+
+            # Concatenate left part, THOUGHT_TOKEN_ID, right part
+            short_tokens = torch.cat([left, torch.tensor([THOUGHT_TOKEN_ID], dtype=short_tokens.dtype), right])
+
+        return short_tokens
 
 @dataclass
 class TrainBatch:
