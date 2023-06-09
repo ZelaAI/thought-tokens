@@ -79,6 +79,6 @@ class TrainBatch:
         attn_mask_bound_top = torch.stack(tops)
         attn_mask_bound_bottom = torch.stack(bottoms)
         
-        max_dense_tokens = 0
+        max_dense_tokens = 3
         
         return TrainBatch(inputs, targets, attn_mask_bound_top, attn_mask_bound_bottom, max_dense_tokens)
