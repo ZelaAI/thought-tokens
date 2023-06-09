@@ -1,7 +1,11 @@
 from dataclasses import dataclass
+import random
 from typing import List
 import torch
+from core.model import THOUGHT_TOKEN_ID
 from data.sequence import Sequence
+
+max_seq_len = 512
 
 class TrainSequence(Sequence):
     """
@@ -11,6 +15,11 @@ class TrainSequence(Sequence):
     def __init__(self, tokens):
         self.inputs = tokens[:-1]
         self.targets = tokens[1:]
+        
+        if len(self.inputs) < max_seq_len:
+            self.inputs = torch.cat([self.inputs, torch.zeros(max_seq_len - len(self.inputs), dtype=torch.long)])
+            self.targets = torch.cat([self.targets, -torch.ones(max_seq_len - len(self.targets), dtype=torch.long)])
+        
         self.length = len(self.inputs)
 
     def __str__(self):
@@ -22,20 +31,15 @@ class TrainSequence(Sequence):
 
         return top, bottom
 
-    def add_dense_tokens(self):
-        pass
-        # num_to_insert = random.randint(1, self.insert_dense_tokens)
-
-        # # enforce never more than 1/3 of the sequence is dense tokens
-        # num_to_insert = min(num_to_insert, len(completion_ids)//3)
-
-        # # shorten completion_ids to make room for dense tokens
-        # completion_ids = completion_ids[:-num_to_insert]
-
-        # # perform insertions
-        # for i in range(num_to_insert):
-        #     index = random.randint(0, len(completion_ids))
-        #     completion_ids.insert(index, DENSE_TOKEN_ID)
+    def add_thought_tokens(self, tokens):
+        num_to_insert = 12
+        short_tokens = tokens[:-num_to_insert]
+        
+        for i in range(num_to_insert):
+            index = random.randint(0, len(short_tokens))
+            short_tokens.insert(index, THOUGHT_TOKEN_ID)
+        
+        return short_tokens
 
 
 @dataclass

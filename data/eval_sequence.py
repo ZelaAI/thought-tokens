@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import torch
 from typing import List
 
-from core.model import DENSE_TOKEN_ID
+from core.model import THOUGHT_TOKEN_ID
 from data.sequence import Sequence
 
 @dataclass
@@ -53,7 +53,7 @@ class EvalSequence(Sequence):
         
         if not train:
             # If an item is dense token, we want to mask it out of loss
-            targets[torch.eq(targets, DENSE_TOKEN_ID)] = -1
+            targets[torch.eq(targets, THOUGHT_TOKEN_ID)] = -1
         
         return targets
     
@@ -86,13 +86,13 @@ class EvalSequence(Sequence):
         # compute maximum depth we need to go to ensure all dense tokens are filled in...
         return max(
             [
-                torch.sum(torch.eq(completion, DENSE_TOKEN_ID)) for completion in self.completions
+                torch.sum(torch.eq(completion, THOUGHT_TOKEN_ID)) for completion in self.completions
             ]
         ).item()
     
     def get_measured_completion_lengths(self) -> List[int]:
         return [
-            len(completion) - torch.sum(torch.eq(completion, DENSE_TOKEN_ID)) for completion in self.completions
+            len(completion) - torch.sum(torch.eq(completion, THOUGHT_TOKEN_ID)) for completion in self.completions
         ]
         
     

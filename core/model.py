@@ -12,7 +12,7 @@ import torch.nn as nn
 from transformers import GPTNeoXTokenizerFast
 from torch.nn import functional as F
 
-DENSE_TOKEN_ID = 50277
+THOUGHT_TOKEN_ID = 50277
 
 class Tokenizer:
     def __init__(self, name = 'EleutherAI/pythia-410m'):
@@ -23,7 +23,7 @@ class Tokenizer:
         
         self.dense_token_id = self.tokenizer.encode('<|dense|>')[0]
         
-        assert DENSE_TOKEN_ID == self.dense_token_id
+        assert THOUGHT_TOKEN_ID == self.dense_token_id
     
     @functools.lru_cache(maxsize=None)
     def _cached_encode(self, value):
@@ -460,7 +460,7 @@ class GPT(nn.Module):
             dense_outputs,
         ], dim=1)
 
-        mask = idx != DENSE_TOKEN_ID
+        mask = idx != THOUGHT_TOKEN_ID
         
         return dense_unmasked.masked_fill(mask.unsqueeze(-1), 0.0)
 
