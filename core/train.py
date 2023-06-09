@@ -357,7 +357,6 @@ def train(
                 # Start a new process for the upload
                 upload_process = Process(target=upload_folder_to_hf, args=(api, checkpoint_dir, repo_id, str(iter_num)))
                 upload_process.start()
-            
 
         # forward backward update, with optional gradient accumulation to simulate larger batch size
         # and using the GradScaler if data type is float16
