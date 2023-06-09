@@ -64,8 +64,8 @@ def train(
     wandb_run_group = None,
 
     # data
-    dataset_name = 'alexedw/minipile_recreation_train',
-    dataset_revision = 'original',
+    dataset_name = 'ZelaAI/minipile_512_streamable',
+
     gradient_accumulation_steps = 4, # used to simulate larger batch sizes
     batch_size = 48, # if gradient_accumulation_steps > 1, this is the micro-batch size
     max_seq_len = 512,
@@ -373,10 +373,10 @@ def train(
                 # pre-load with dense tokens (max depth 3+1)
                 for i in range(min(batch.max_dense_tokens, 3)):
                     # preloading dense inputs
-                    _, dense_out, _ = model(batch.inputs, dense=dense_input, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom, pos_mask=batch.pos_mask)
+                    _, dense_out, _ = model(batch.inputs, dense=dense_input, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom)
                     dense_input = model.create_dense_inputs(batch.inputs, dense_out)
 
-                _, _, loss = model(batch.inputs, dense=dense_input, targets=batch.targets, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom, pos_mask=batch.pos_mask)
+                _, _, loss = model(batch.inputs, dense=dense_input, targets=batch.targets, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom)
                 
                 loss = loss / gradient_accumulation_steps
             # immediately async prefetch next batch while model is doing the forward pass on the GPU

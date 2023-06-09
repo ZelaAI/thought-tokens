@@ -132,7 +132,7 @@ class EvalSequence(Sequence):
         return self.max_new_tokens == 0 
 
 @dataclass
-class Batch:
+class EvalBatch:
     inputs: torch.Tensor
     targets: torch.Tensor
     attn_mask_bound_top: torch.Tensor
@@ -196,7 +196,7 @@ class Batch:
                 
                     pos += seq.length
                     
-            return Batch(inputs, targets, attn_mask_bound_top, attn_mask_bound_bottom, pos_mask, target_pos_mask, generate_positions, packs, max_dense_tokens)
+            return EvalBatch(inputs, targets, attn_mask_bound_top, attn_mask_bound_bottom, pos_mask, target_pos_mask, generate_positions, packs, max_dense_tokens)
 
         return packs_to_batch
 

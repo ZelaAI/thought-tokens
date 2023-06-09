@@ -6,7 +6,8 @@
         "**/.pytest_cache": true,
     },
     "python.testing.pytestArgs": [
-        "tests"
+        "tests",
+        "-n", "4",
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
