@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 import sys
+
+from data.sequence import Sequence
 sys.path.append('../..')
 from data.packer import Packer
 import pytest
 
 @dataclass
-class Sequence:
+class SequenceTiny(Sequence):
     length: int
     max_new_tokens: int
 
@@ -24,12 +26,12 @@ def packer(max_seq_len):
 
 
 def test_pack_sequences(packer):
-    sequences = [Sequence(10, 10), Sequence(5, 5), Sequence(3, 3), Sequence(3, 3)]
+    sequences = [SequenceTiny(10, 10), SequenceTiny(5, 5), SequenceTiny(3, 3), SequenceTiny(3, 3)]
     packer.add_to_queue(sequences)
 
     # Packer2 just ensures no side effects from packer, somehow this was an issue previously.
     packer2 = Packer(10)
-    sequences2 = [Sequence(10, 10), Sequence(5, 5), Sequence(3, 3), Sequence(3, 3)]
+    sequences2 = [SequenceTiny(10, 10), SequenceTiny(5, 5), SequenceTiny(3, 3), SequenceTiny(3, 3)]
     packer2.add_to_queue(sequences2)
 
     expected_packs = [[10], [5, 3], [3]]
@@ -40,7 +42,7 @@ def test_pack_sequences(packer):
 
 
 def test_sequence_order(packer):
-    sequences = [Sequence(10, 5), Sequence(10, 10)]
+    sequences = [SequenceTiny(10, 5), SequenceTiny(10, 10)]
     packer.add_to_queue(sequences)
 
     expected_order = [[10], [5]]  # max_new_tokens order
@@ -51,8 +53,8 @@ def test_sequence_order(packer):
 
 
 def test_dynamic_queue_addition(packer):
-    sequences_1 = [Sequence(10, 10), Sequence(5, 5)]
-    sequences_2 = [Sequence(3, 3), Sequence(3, 3)]
+    sequences_1 = [SequenceTiny(10, 10), SequenceTiny(5, 5)]
+    sequences_2 = [SequenceTiny(3, 3), SequenceTiny(3, 3)]
 
     packer.add_to_queue(sequences_1)
     first_pack = next(packer)

@@ -7,9 +7,8 @@ import math
 from collections import defaultdict
 import torch
 from typing import List
-from data.sequence import Sequence
-
-from data.utils import ModelTester
+from data.eval_sequence import EvalSequence
+from torch.utils.data import Dataset
 
 class ModelTester:
     def __init__(self, tokenizer, append_dense_tokens=False, max_seq_len=512):
@@ -26,7 +25,7 @@ class ModelTester:
     def decode(self, tokens):
         return self.tokenizer.decode(tokens).replace("<|dense|>", "")
     
-    def gather_dataset(self, function) -> List[Sequence]:
+    def gather_dataset(self, function) -> List[EvalSequence]:
         self.call_id = 0
         self.is_recording = True
         self.dataset = []
@@ -46,7 +45,7 @@ class ModelTester:
         if self.is_recording:
             if self.append_dense_tokens:
                 completions = ["<|dense|>" + completion for completion in completions]
-            response = Sequence(
+            response = EvalSequence(
                 id=len(self.dataset),
                 context=self.encode(context),
                 completions=[self.encode(completion) for completion in completions],
@@ -54,7 +53,7 @@ class ModelTester:
             )
 
             if response.length + response.max_new_tokens * len(response.completions) > self.max_seq_len:
-                raise ValueError(f"Sequence {response.id} is too long ({response.length + response.max_new_tokens * len(response.completions)} > {self.max_seq_len})")
+                raise ValueError(f"EvalSequence {response.id} is too long ({response.length + response.max_new_tokens * len(response.completions)} > {self.max_seq_len})")
             
             self.dataset.append(response)
             return response
@@ -64,10 +63,9 @@ class ModelTester:
             return response
 
 class TestDataset:
-    max_new_tokens = 0
-    num_to_generate = 0
-    max_length = 512
-
+    dataset: Dataset    
+    name: str
+    
     def __call__(self):
         results = defaultdict(float)
 
@@ -97,6 +95,9 @@ class TestDataset:
         }
         
         return results_renamed
+    
+    def process_example(self, example) -> tuple[bool, dict]:
+        raise NotImplementedError
     
     def accuracy(self, loglikelihoods):
         """
