@@ -22,6 +22,8 @@ max_iters = 10000
 warmup_iters = 1000
 lr_decay_iters = 10000
 
+train_only = True
+
 ####################  RESUME ####################
 # iter_num = 0
 # load_from_checkpoint = 'alexedw/dense-train-dense-9'
