@@ -3,6 +3,10 @@ import sys
 import time
 import math
 from contextlib import nullcontext
+from core.utils import TokensPerSecondTimer
+
+from data.packer import Packer
+from data.stream_dataset import HuggingfaceStreamDataset
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -17,7 +21,7 @@ from huggingface_hub import hf_hub_download
 import json
 
 from tqdm import tqdm
-from data.evals import TestAll
+from data.evals import ModelTester, TestAll
 from data.eval_sequence import EvalSequence, EvalBatch, report_logits
 from data.train_sequence import TrainSequence, TrainBatch
 
@@ -166,24 +170,8 @@ def train(
             pass
 
     if not eval_only:
-        train_dataset_raw = load_dataset(dataset_name, revision=dataset_revision, split='train', streaming=True)
-        train_dataset = SequenceStreamDataset(
-            train_dataset_raw,
-            skip_first_n=batch_size * iter_num * gradient_accumulation_steps,
-            insert_dense_tokens=insert_dense_tokens,
-            tokenizer=tokenizer
-        )
-
-        print("WARNING\n"*10, "TRAIN=FALSE FOR BATCHPACKING")
-        collate_fn = Batch.packs_to_batch_factory(
-            train=False,
-            causal=model_config.causal,
-            max_seq_len=max_seq_len,
-            batch_size=batch_size
-        )
-
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate_fn)
-        
+        train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=TrainBatch.collate_fn, num_workers=2, prefetch_factor=2)
         train_dataloader_iter = iter(train_dataloader)
 
         def get_batch():
@@ -195,10 +183,6 @@ def train(
 
         # optimizer
         optimizer = model.configure_optimizers(weight_decay, learning_rate, (beta1, beta2), device)
-
-    else:
-        def get_batch():
-            return None
 
     if load_from_checkpoint is not None:        
         state_dict = torch.load(hf_hub_download(load_from_checkpoint, "model_state.pt", revision=str(iter_num)), map_location=device)
@@ -228,7 +212,7 @@ def train(
         
         packer = Packer(max_seq_len, model_tester.gather_dataset(test_all))
         
-        collate_fn = Batch.packs_to_batch_factory(
+        collate_fn = EvalBatch.packs_to_batch_factory(
             train=False,
             causal=model_config.causal,
             max_seq_len=max_seq_len,
@@ -238,7 +222,7 @@ def train(
         dataloader = DataLoader(packer, batch_size=batch_size, collate_fn=collate_fn)
         dataloader_iter = iter(dataloader)
 
-        st, ll, stl, prev_batch = None, None, None, Batch(None, None, None, None, None, None, None, [[]], None)
+        st, ll, stl, prev_batch = None, None, None, EvalBatch(None, None, None, None, None, None, None, [[]], None)
         batch = next(dataloader_iter).to(device)
     
         eval_tokens_per_second_timer = TokensPerSecondTimer(batch_size * max_seq_len)
@@ -305,7 +289,7 @@ def train(
 
     checkpoints = []
     # training loop
-    batch = get_batch() # fetch the very first batch
+    batch = get_batch() if not eval_only else None # fetch the very first batch
     t0 = time.time()
     raw_model = model.module if ddp else model # unwrap DDP container if needed
     metrics = None
