@@ -212,7 +212,7 @@ def run_job(
 
     if debug:
         print("Debug mode enabled, awaiting user input before terminating pod.")
-        
+        print(f"Connect to machine with: ssh root@{ip} -p {port}")
         inp = input("Please type 'kill' to terminate pod: ")
         while inp != 'kill':
             inp = input("Please type 'kill' to terminate pod: ")
