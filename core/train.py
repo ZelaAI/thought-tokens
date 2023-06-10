@@ -357,7 +357,6 @@ def train(
                 # Start a new process for the upload
                 upload_process = Process(target=upload_folder_to_hf, args=(api, checkpoint_dir, repo_id, str(iter_num)))
                 upload_process.start()
-            
 
         # forward backward update, with optional gradient accumulation to simulate larger batch size
         # and using the GradScaler if data type is float16
@@ -373,10 +372,10 @@ def train(
                 # pre-load with dense tokens (max depth 3+1)
                 for i in range(min(batch.max_dense_tokens, 3)):
                     # preloading dense inputs
-                    _, dense_out, _ = model(batch.inputs, dense=dense_input, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom)
+                    _, dense_out, _ = model(batch.inputs, dense=dense_input)#, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom)
                     dense_input = model.create_dense_inputs(batch.inputs, dense_out)
 
-                _, _, loss = model(batch.inputs, dense=dense_input, targets=batch.targets, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom)
+                _, _, loss = model(batch.inputs, dense=dense_input, targets=batch.targets)#, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom)
                 
                 loss = loss / gradient_accumulation_steps
             # immediately async prefetch next batch while model is doing the forward pass on the GPU
