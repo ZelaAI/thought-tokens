@@ -14,7 +14,7 @@ class TrainSequence(Sequence):
     """
     def __init__(self, tokens):
         
-        tokens = self.add_thought_tokens(tokens)
+        # tokens = self.add_thought_tokens(tokens)
         
         self.inputs = tokens[:-1]
         self.targets = tokens[1:]
