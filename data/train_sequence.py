@@ -12,9 +12,9 @@ class TrainSequence(Sequence):
     Basic train sequence class, just holds inputs and targets
     Does not support masking between sequences or anything fancy
     """
-    def __init__(self, tokens):
+    def __init__(self, tokens, add_thought_tokens=True):
         
-        # tokens = self.add_thought_tokens(tokens)
+        tokens = self.add_thought_tokens(tokens) if add_thought_tokens else tokens
         
         self.inputs = tokens[:-1]
         self.targets = tokens[1:]
@@ -41,7 +41,7 @@ class TrainSequence(Sequence):
         short_tokens = tokens[:-num_to_insert]
 
         for _ in range(num_to_insert):
-            index = torch.randint(0, len(short_tokens) + 1, (1,))  # get random index
+            index = torch.randint(32, len(short_tokens) + 1, (1,))  # get random index
             left, right = short_tokens.split([index, len(short_tokens) - index])  # split tensor
 
             # Concatenate left part, THOUGHT_TOKEN_ID, right part
