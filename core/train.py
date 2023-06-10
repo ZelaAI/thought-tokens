@@ -3,7 +3,7 @@ import sys
 import time
 import math
 from contextlib import nullcontext
-from core.utils import TokensPerSecondTimer
+from core.utils import TokensPerSecondTimer, mint_names
 
 from data.packer import Packer
 from data.stream_dataset import HuggingfaceStreamDataset
@@ -30,35 +30,23 @@ from multiprocessing import Process
 from core.model import GPTConfig, GPT, Tokenizer
 import random
 
-def mint_names():
-    path = os.path.abspath(sys.modules['__main__'].__file__)
-    folder = os.path.dirname(path).split('/')[-1]
-    file = os.path.basename(path).split('.')[0]
-    
-    repo_id = f'alexedw/{folder.replace("_", "-")}-{file.replace("_", "-")}'
-    wandb_run_name = f'{folder.replace("_", " ").title()}: {file.replace("_", " ").title()}'
-    wandb_run_group = folder.replace("_", " ").title()
-    
-    return repo_id, wandb_run_name, wandb_run_group, True
-
-
 def train(
     # -----------------------------------------------------------------------------
     eval_only = False, # if True, script exits right after the first eval
     train_only = False,
 
     # I/O
-    eval_interval = 250,
+    eval_interval = 125,
     log_interval = 1,
 
     # Checkpointing
     out_dir = 'out',
-    checkpoint_interval = 100,
-    upload_checkpoint_interval = 500,
-    repo_id = None, #"alexedw/gptx-default"
+    checkpoint_interval = 125,
+    upload_checkpoint_interval = 250,
+    repo_id = "alexedw/gptx-default",
 
     # wandb logging
-    wandb_log = False, # disabled by default
+    wandb_log = True, # disabled by default
     wandb_project = 'gptx',
     wandb_run_name = 'default-run-name', # 'run' + str(time.time())
     wandb_run_group = None,
@@ -66,8 +54,8 @@ def train(
     # data
     dataset_name = 'ZelaAI/minipile_512_streamable',
 
-    gradient_accumulation_steps = 4, # used to simulate larger batch sizes
-    batch_size = 48, # if gradient_accumulation_steps > 1, this is the micro-batch size
+    gradient_accumulation_steps = 8, # used to simulate larger batch sizes
+    batch_size = 24, # if gradient_accumulation_steps > 1, this is the micro-batch size
     max_seq_len = 512,
     TestAllClass=TestAll,
 
@@ -75,17 +63,17 @@ def train(
     tokenizer_name = 'EleutherAI/pythia-410m',
 
     # adamw optimizer
-    max_iters = 20000, # total number of training iterations
-    learning_rate = 1e-5, # max learning rate
+    max_iters = 10000,
+    learning_rate = 1e-5,
     weight_decay = 0.1,
     beta1 = 0.9,
     beta2 = 0.95,
-    grad_clip = 1.0, # clip gradients at this value, or disable if == 0.0
+    grad_clip = 1.0, # disable if == 0.0
 
     # learning rate decay settings
     decay_lr = True, # whether to decay the learning rate
-    warmup_iters = 1500, # how many steps to warm up for
-    lr_decay_iters = 20000, # should be ~= max_iters per Chinchilla
+    warmup_iters = 1000, # how many steps to warm up for
+    lr_decay_iters = 10000, # should be ~= max_iters per Chinchilla
     min_lr = 1e-6, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
@@ -102,14 +90,15 @@ def train(
     # DDP settings
     backend = 'nccl', # 'nccl', 'gloo', etc.
     # system
-    device = 'cuda', # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
-    dtype = torch.float16, # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
-    compile = True, # use PyTorch 2.0 to compile the model to be faster
+    device = 'cuda',
+    dtype = torch.float16,
+    compile = True,
 
-    insert_dense_tokens = 0,
+    insert_dense_tokens = 12,
 
     **_kwargs
 ):
+  
     # mark all params as globals
     # -----------------------------------------------------------------------------
     config_keys = [k for k, v in locals().items() if not k.startswith('_')]
@@ -445,4 +434,10 @@ def train(
     torch.cuda.empty_cache()
 
 if __name__ == "__main__":
-    train()
+    repo_id, wandb_run_name, wandb_run_group = mint_names()
+
+    train(
+        repo_id=repo_id,
+        wandb_run_name=wandb_run_name,
+        wandb_run_group=wandb_run_group,
+    )
