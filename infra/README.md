@@ -11,6 +11,8 @@ For this to work, a `runpod.ignore.txt` file is required in this directory, adhe
 <RUNPOD_API_KEY>
 <JUPYTER_PASSWORD>
 <SSH_PUBLIC_KEY>
+<HUGGINGFACE_TOKEN>
+<WANDB_TOKEN>
 ```
 
 For instance:
@@ -19,6 +21,8 @@ For instance:
 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
 hunter2
 ssh-rsa AAAAB3NzaC1yc2E
+hf_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+wandb_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
 ```
 
 Similarly, a `remote.ignore.txt` file is also expected within this directory. This file serves as the template for the commands that will be automatically executed upon connecting to the remote instance. A sample template could look like this:

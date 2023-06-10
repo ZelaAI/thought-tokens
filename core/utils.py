@@ -40,13 +40,15 @@ def get_current_git_branch():
     return None
 
 def mint_names():
-    path = os.path.abspath(sys.modules['__main__'].__file__)
-    folder = os.path.dirname(path).split('/')[-1]
-    file = os.path.basename(path).split('.')[0]
+    branch = get_current_git_branch().split("/")
+    if len(branch) != 3:
+        raise ValueError(f"Branch name must be in the format 'folder/group/run-name'")
     
-    repo_id = f'alexedw/{folder.replace("_", "-")}-{file.replace("_", "-")}'
-    wandb_run_name = f'{folder.replace("_", " ").title()}: {file.replace("_", " ").title()}'
-    wandb_run_group = folder.replace("_", " ").title()
+    group = branch[1]
+    run_name = branch[2]
+    
+    repo_id = f'alexedw/{group}-{run_name}'
+    wandb_run_name = f'{group.title()}: {run_name.replace("-", " ").title()}'
+    wandb_run_group = group
     
     return repo_id, wandb_run_name, wandb_run_group, True
-

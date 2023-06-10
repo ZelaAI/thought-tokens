@@ -30,18 +30,6 @@ from multiprocessing import Process
 from core.model import GPTConfig, GPT, Tokenizer
 import random
 
-def mint_names():
-    path = os.path.abspath(sys.modules['__main__'].__file__)
-    folder = os.path.dirname(path).split('/')[-1]
-    file = os.path.basename(path).split('.')[0]
-    
-    repo_id = f'alexedw/{folder.replace("_", "-")}-{file.replace("_", "-")}'
-    wandb_run_name = f'{folder.replace("_", " ").title()}: {file.replace("_", " ").title()}'
-    wandb_run_group = folder.replace("_", " ").title()
-    
-    return repo_id, wandb_run_name, wandb_run_group, True
-
-
 def train(
     # -----------------------------------------------------------------------------
     eval_only = False, # if True, script exits right after the first eval
@@ -110,6 +98,7 @@ def train(
 
     **_kwargs
 ):
+  
     # mark all params as globals
     # -----------------------------------------------------------------------------
     config_keys = [k for k, v in locals().items() if not k.startswith('_')]
