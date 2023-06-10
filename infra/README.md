@@ -16,7 +16,6 @@ For this to work, a `runpod.ignore.txt` file is required in this directory, adhe
 ```
 
 For instance:
-
 ```
 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
 hunter2
@@ -24,22 +23,6 @@ ssh-rsa AAAAB3NzaC1yc2E
 hf_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
 wandb_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
 ```
-
-Similarly, a `remote.ignore.txt` file is also expected within this directory. This file serves as the template for the commands that will be automatically executed upon connecting to the remote instance. A sample template could look like this:
-
-```
-cd /workspace
-git clone https://github.com/ZelaAI/thought-tokens.git
-cd thought-tokens
-git checkout {branch}
-pip install -r requirements.txt
-huggingface-cli login --token hf_token_goes_here
-wandb login wandb_token_goes_here
-
-python -m {script_path}
-```
-
-In this template, `{branch}` and `{script_path}` are placeholders that will be replaced with the actual branch and script path passed as arguments to `runpod.py`.
 
 ## Usage
 
@@ -51,15 +34,10 @@ To utilize these scripts, run `runpod.py` with the following arguments to:
 
 Execute the following command:
 ```bash
-python infra/runpod.py <branch> <python_script_path> [debug]
-```
-
-For example:
-```bash
-python infra/runpod.py main config.evals
+python infra/runpod.py
 ```
 
 Or to enable debug mode:
 ```bash
-python infra/runpod.py main config.evals debug
+python infra/runpod.py debug
 ```
