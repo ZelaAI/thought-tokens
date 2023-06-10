@@ -17,7 +17,7 @@ class TrainSequence(Sequence):
         tokens = self.add_thought_tokens(tokens) if add_thought_tokens else tokens
         
         self.inputs = tokens[:-1]
-        self.targets = tokens[1:]
+        self.targets = tokens[1:].clone()
         
         if len(self.inputs) < max_seq_len:
             self.inputs = torch.cat([self.inputs, torch.zeros(max_seq_len - len(self.inputs), dtype=torch.long)])
