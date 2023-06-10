@@ -13,6 +13,8 @@ def test_train_base():
         batch_size=1,
         max_seq_len=512,
 
+        wandb_log=False,
+
         model_config=GPTConfig.from_pretrained('EleutherAI/pythia-70m'),
         load_from_huggingface='EleutherAI/pythia-70m',
         dataset_name = "ZelaAI/minipile_512_tiny_streamable",

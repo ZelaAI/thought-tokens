@@ -20,5 +20,5 @@ Read about why we do this [here](https://github.com/ZelaAI/thought-tokens/pull/1
 
 Naming convetion:
 
-`experiment/{group}/experiment-name-goes-here`
+`experiment/group/experiment-name-goes-here`
 

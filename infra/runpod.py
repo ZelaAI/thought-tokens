@@ -4,10 +4,23 @@ import time
 import sys
 import subprocess
 
-with open('infra/runpod.ignore.txt', 'r') as file:
-    lines = file.read().split('\n')
+from core.utils import get_current_git_branch
 
-    api_key, jupyter_password, ssh_public_key = lines
+remote_script = """
+cd /workspace
+git clone https://github.com/ZelaAI/thought-tokens.git
+cd thought-tokens
+git checkout {branch}
+pip install -r requirements.txt
+huggingface-cli login --token {huggingface_key}
+wandb login {wandb_key}
+python -m core.train
+"""
+
+with open('infra/runpod.ignore.txt', 'r') as file:
+    lines = file.read().strip().split('\n')
+
+    api_key, jupyter_password, ssh_public_key, huggingface_key, wandb_key = lines
     
 def send_query(query: str):
     # Set the headers, URL, and GraphQL query
@@ -228,15 +241,9 @@ def run_job(
     print(f'Total time: {total_time:.2f} minutes', f'Estimated cost: ${bidPerGpuHourly * total_time / 60:.2f}')
 
 if __name__ == '__main__':
-    args = sys.argv[1:]
-    branch = args[0]
-    script_path = args[1]
+    debug = True if 'debug' in sys.argv else False
+    branch = get_current_git_branch()
     
-    debug = False if len(args) < 3 else args[2] == 'debug'
-    
-    with open('infra/remote.ignore.txt', 'r') as file:
-        remote_template = file.read()
-
-    script = remote_template.format(branch=branch, script_path=script_path)
+    script = remote_script.format(branch=branch, wandb_key=wandb_key, huggingface_key=huggingface_key)
     
     run_job(script=script, debug=debug)

@@ -3,7 +3,7 @@ import sys
 import time
 import math
 from contextlib import nullcontext
-from core.utils import TokensPerSecondTimer
+from core.utils import TokensPerSecondTimer, mint_names
 
 from data.packer import Packer
 from data.stream_dataset import HuggingfaceStreamDataset
@@ -43,10 +43,10 @@ def train(
     out_dir = 'out',
     checkpoint_interval = 125,
     upload_checkpoint_interval = 250,
-    repo_id = None, #"alexedw/gptx-default"
+    repo_id = "alexedw/gptx-default",
 
     # wandb logging
-    wandb_log = False, # disabled by default
+    wandb_log = True, # disabled by default
     wandb_project = 'gptx',
     wandb_run_name = 'default-run-name', # 'run' + str(time.time())
     wandb_run_group = None,
@@ -434,4 +434,10 @@ def train(
     torch.cuda.empty_cache()
 
 if __name__ == "__main__":
-    train()
+    repo_id, wandb_run_name, wandb_run_group = mint_names()
+
+    train(
+        repo_id=repo_id,
+        wandb_run_name=wandb_run_name,
+        wandb_run_group=wandb_run_group,
+    )

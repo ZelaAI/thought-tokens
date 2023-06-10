@@ -25,8 +25,6 @@ class TokensPerSecondTimer:
         
         return self.running_average        
 
-
-
 def get_current_git_branch():
     result = subprocess.run(["git", "branch"], capture_output=True, text=True)
     if result.returncode != 0:
@@ -42,7 +40,7 @@ def get_current_git_branch():
 def mint_names():
     branch = get_current_git_branch().split("/")
     if len(branch) != 3:
-        raise ValueError(f"Branch name must be in the format 'folder/group/run-name'")
+        raise ValueError(f"Branch name must be in the format 'experiment/group/run-name'")
     
     group = branch[1]
     run_name = branch[2]
@@ -51,4 +49,4 @@ def mint_names():
     wandb_run_name = f'{group.title()}: {run_name.replace("-", " ").title()}'
     wandb_run_group = group
     
-    return repo_id, wandb_run_name, wandb_run_group, True
+    return repo_id, wandb_run_name, wandb_run_group
