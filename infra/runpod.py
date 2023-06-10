@@ -4,7 +4,17 @@ import time
 import sys
 import subprocess
 
-from core.utils import get_current_git_branch
+def get_current_git_branch():
+    result = subprocess.run(["git", "branch"], capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error: {result.stderr}")
+        return None
+
+    lines = result.stdout.splitlines()
+    for line in lines:
+        if line.startswith('*'):
+            return line[2:]
+    return None
 
 remote_script = """
 cd /workspace
