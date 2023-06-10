@@ -12,7 +12,7 @@ min_lr = 1e-6
 insert_dense_tokens = 12
 
 gradient_accumulation_steps = 8
-batch_size = 8
+batch_size = 24
 
 eval_interval = 125
 checkpoint_interval = 125
