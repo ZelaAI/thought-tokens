@@ -48,8 +48,6 @@ class TrainSequence(Sequence):
         top = torch.arange(self.length, dtype=torch.long)
         bottom = torch.ones(self.length, dtype=torch.long) * (self.length - 1)
         
-        thought_token_index = self.merge_consecutive_thought_token_indexes(self.get_thought_token_indexes() + [self.length - 1])
-        
         # intuitively, top is 'what is the first token that is allowed to see the token at this ID'
         # and bottom is 'what is the last token that is allowed to see the token at this ID'
         
@@ -57,15 +55,30 @@ class TrainSequence(Sequence):
         # is top -> first token that can see this token is still itself (causal)
         # and bottom -> last token that can see this token is the next thought token (or end of sequence)
 
+        groups = self.group_thought_token_indexes(self.get_thought_token_indexes())
         for i in range(max_seq_len):
-            bottom[i] = thought_token_index[0]
-            if thought_token_index[0] == i:
-                thought_token_index.pop(0)
-    
+            if i in groups[0]:
+                groups.pop(0)
+            if len(groups) == 0:
+                break
+            bottom[i] = groups[0][-1]
+
         return top, bottom
     
     def get_thought_token_indexes(self) -> List[int]:
         return [i for i, x in enumerate(self.inputs) if x == THOUGHT_TOKEN_ID]
+    
+    def group_thought_token_indexes(self, thought_token_indexes: List[int]) -> List[List[int]]:
+        groups = []
+        group = []
+        for i in range(len(thought_token_indexes)):
+            group.append(thought_token_indexes[i])
+            
+            if i == len(thought_token_indexes) - 1 or thought_token_indexes[i+1] != thought_token_indexes[i] + 1:
+                groups.append(group)
+                group = []
+        
+        return groups
 
     def add_thought_tokens(self, tokens: torch.Tensor):
         num_to_insert = 32
