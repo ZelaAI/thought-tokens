@@ -101,7 +101,7 @@ def create_spot_pod(gpu_id, bidPerGpu):
               minMemoryInGb: 15
               gpuTypeId: "{gpu_id}"
               name: "RunPod Pytorch {gpu_id}"
-              imageName: "runpod/pytorch:3.10-2.0.0-117"
+              imageName: "runpod/pytorch:3.10-2.0.1-117-devel"
               dockerArgs: ""
               ports: "22/tcp"
               volumeMountPath: "/workspace"
@@ -196,7 +196,8 @@ def terminate_pod(id):
     
 
 def run_job(
-    gpu = 'A100 SXM',
+    gpu = 'A100',
+    # gpu = 'A100 SXM',
     script = 'touch test.txt',
     debug = False,
     **kwargs
