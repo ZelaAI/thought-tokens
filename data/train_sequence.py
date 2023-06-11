@@ -84,12 +84,12 @@ class TrainSequence(Sequence):
         num_to_insert = 32
         short_tokens = tokens[:-num_to_insert]
 
-        for _ in range(num_to_insert):
+        for _ in range(num_to_insert//2):
             index = torch.randint(32, len(short_tokens) + 1, (1,))  # get random index
             left, right = short_tokens.split([index, len(short_tokens) - index])  # split tensor
 
             # Concatenate left part, THOUGHT_TOKEN_ID, right part
-            short_tokens = torch.cat([left, torch.tensor([THOUGHT_TOKEN_ID], dtype=short_tokens.dtype), right])
+            short_tokens = torch.cat([left, torch.tensor([THOUGHT_TOKEN_ID,THOUGHT_TOKEN_ID], dtype=short_tokens.dtype), right])
 
         return short_tokens
 
