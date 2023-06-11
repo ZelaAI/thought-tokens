@@ -30,11 +30,42 @@ class TrainSequence(Sequence):
     def __str__(self):
         return f"<TrainSequence length={self.length} inputs={self.inputs}, targets={self.targets}>"
 
+    def merge_consecutive_thought_token_indexes(self, thought_token_indexes: List[int]) -> List[int]:
+        new_indexes = []
+        
+        for i in range(len(thought_token_indexes) - 1):
+            this_token = thought_token_indexes[i]
+            next_token = thought_token_indexes[i + 1]
+
+            if this_token + 1 != next_token and this_token != next_token:
+                new_indexes.append(this_token)
+
+        new_indexes.append(thought_token_indexes[-1])
+
+        return new_indexes
+
     def get_attn_mask_bounds(self):
         top = torch.arange(self.length, dtype=torch.long)
         bottom = torch.ones(self.length, dtype=torch.long) * (self.length - 1)
+        
+        thought_token_index = self.merge_consecutive_thought_token_indexes(self.get_thought_token_indexes() + [self.length - 1])
+        
+        # intuitively, top is 'what is the first token that is allowed to see the token at this ID'
+        # and bottom is 'what is the last token that is allowed to see the token at this ID'
+        
+        # so, as such what we're trying to do here (when masking between thought tokens and rest of the sequence)
+        # is top -> first token that can see this token is still itself (causal)
+        # and bottom -> last token that can see this token is the next thought token (or end of sequence)
 
+        for i in range(max_seq_len):
+            bottom[i] = thought_token_index[0]
+            if thought_token_index[0] == i:
+                thought_token_index.pop(0)
+    
         return top, bottom
+    
+    def get_thought_token_indexes(self) -> List[int]:
+        return [i for i, x in enumerate(self.inputs) if x == THOUGHT_TOKEN_ID]
 
     def add_thought_tokens(self, tokens: torch.Tensor):
         num_to_insert = 32
