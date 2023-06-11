@@ -32,7 +32,7 @@ import random
 
 def train(
     # -----------------------------------------------------------------------------
-    eval_only = False, # if True, script exits right after the first eval
+    eval_only = True, # if True, script exits right after the first eval
     train_only = False,
 
     # I/O
@@ -77,11 +77,11 @@ def train(
     min_lr = 1e-6, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
-    iter_num = 0,
+    iter_num = 5250,
     model_config = GPTConfig.from_pretrained('EleutherAI/pythia-410m'),
-    load_from_huggingface = 'EleutherAI/pythia-410m',
+    load_from_huggingface = None,#'EleutherAI/pythia-410m',
     load_from_huggingface_revision = 'main',
-    load_from_checkpoint = None,
+    load_from_checkpoint = 'alexedw/dense-train-fast-1',
     load_from_checkpoint_local = False,
 
     temperature = 0.7,
