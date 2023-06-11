@@ -56,7 +56,7 @@ def train(
 
     gradient_accumulation_steps = 8, # used to simulate larger batch sizes
     batch_size = 24, # if gradient_accumulation_steps > 1, this is the micro-batch size
-    max_seq_len = 512,
+    max_seq_len = 768,
     TestAllClass=TestAll,
 
     # evals

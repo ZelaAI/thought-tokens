@@ -196,7 +196,7 @@ def terminate_pod(id):
     
 
 def run_job(
-    gpu = 'A100 SXM',
+    gpu = 'A100',
     script = 'touch test.txt',
     debug = False,
     **kwargs
