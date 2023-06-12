@@ -54,14 +54,15 @@ class TrainSequence(Sequence):
         # so, as such what we're trying to do here (when masking between thought tokens and rest of the sequence)
         # is top -> first token that can see this token is still itself (causal)
         # and bottom -> last token that can see this token is the next thought token (or end of sequence)
-
-        groups = self.group_thought_token_indexes(self.get_thought_token_indexes())
-        for i in range(max_seq_len):
-            if i in groups[0]:
-                groups.pop(0)
-            if len(groups) == 0:
-                break
-            bottom[i] = groups[0][-1]
+        
+        if random.random() < 0.5:
+            groups = self.group_thought_token_indexes(self.get_thought_token_indexes())
+            for i in range(max_seq_len):
+                if i in groups[0]:
+                    groups.pop(0)
+                if len(groups) == 0:
+                    break
+                bottom[i] = groups[0][-1]
 
         return top, bottom
     
