@@ -44,7 +44,7 @@ class ModelTester:
     def __call__(self, context: str, completions=[""], max_new_tokens: int = 0):
         if self.is_recording:
             if self.append_dense_tokens:
-                completions = ["<|dense|>" + completion for completion in completions]
+                completions = ["<|dense|><|dense|>" + completion for completion in completions]
             response = EvalSequence(
                 id=len(self.dataset),
                 context=self.encode(context),
