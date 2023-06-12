@@ -26,7 +26,7 @@ def test_thought_tokens_added():
     num_thoughts_in_targets = torch.sum(sequence.targets == THOUGHT_TOKEN_ID)
 
     # Check if the count of thought tokens are as expected
-    assert num_thoughts_in_inputs == 12
+    assert num_thoughts_in_inputs == 32
     assert num_thoughts_in_targets == 0  # we should be masking them here
 
     print(sequence.inputs)
