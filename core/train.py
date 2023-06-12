@@ -17,7 +17,7 @@ from torch.distributed import init_process_group, destroy_process_group
 from torch.utils.data import DataLoader
 from huggingface_hub import HfApi
 from datasets import load_dataset
-from huggingface_hub import hf_hub_download
+from huggingface_hub.file_download import hf_hub_download
 import json
 
 from tqdm import tqdm
