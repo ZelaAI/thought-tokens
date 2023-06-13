@@ -57,6 +57,7 @@ def train(
     gradient_accumulation_steps = 8, # used to simulate larger batch sizes
     batch_size = 24, # if gradient_accumulation_steps > 1, this is the micro-batch size
     max_seq_len = 512,
+    eval_max_seq_len = 768,
     TestAllClass=TestAll,
 
     # evals
@@ -77,11 +78,11 @@ def train(
     min_lr = 1e-6, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
-    iter_num = 5250,
+    iter_num = 5750,
     model_config = GPTConfig.from_pretrained('EleutherAI/pythia-410m'),
     load_from_huggingface = None,#'EleutherAI/pythia-410m',
     load_from_huggingface_revision = 'main',
-    load_from_checkpoint = 'alexedw/dense-train-fast-1',
+    load_from_checkpoint = 'alexedw/dense-train-masked-between-tokens-resume-from-fast',
     load_from_checkpoint_local = False,
 
     temperature = 0.7,
@@ -150,7 +151,7 @@ def train(
         model = torch.compile(unoptimized_model) # pytorch 2.0
 
     if not train_only:
-        model_tester = ModelTester(tokenizer, append_dense_tokens=insert_dense_tokens > 0, max_seq_len=max_seq_len)
+        model_tester = ModelTester(tokenizer, append_dense_tokens=insert_dense_tokens > 0, max_seq_len=eval_max_seq_len)
 
         test_all = TestAllClass(model_tester)
         
@@ -192,12 +193,12 @@ def train(
     def run_evals():
         model.eval()
         
-        packer = Packer(max_seq_len, model_tester.gather_dataset(test_all))
+        packer = Packer(eval_max_seq_len, model_tester.gather_dataset(test_all))
         
         collate_fn = EvalBatch.packs_to_batch_factory(
             train=False,
             causal=model_config.causal,
-            max_seq_len=max_seq_len,
+            max_seq_len=eval_max_seq_len,
             batch_size=batch_size
         )
         
@@ -207,7 +208,7 @@ def train(
         st, ll, stl, prev_batch = None, None, None, EvalBatch(None, None, None, None, None, None, None, [[]], None)
         batch = next(dataloader_iter).to(device)
     
-        eval_tokens_per_second_timer = TokensPerSecondTimer(batch_size * max_seq_len)
+        eval_tokens_per_second_timer = TokensPerSecondTimer(batch_size * eval_max_seq_len)
 
         while len(batch.packs[0]) > 0 or len(prev_batch.packs[0]) > 0:
             dense_input = model.create_dense_inputs(batch.inputs)
