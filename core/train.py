@@ -77,11 +77,11 @@ def train(
     min_lr = 1e-6, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
-    iter_num = 1500,
+    iter_num = 6000,
     model_config = GPTConfig.from_pretrained('EleutherAI/pythia-410m'),
     load_from_huggingface = None,#'EleutherAI/pythia-410m',
     load_from_huggingface_revision = 'main',
-    load_from_checkpoint = 'alexedw/dense-train-masked-between-tokens',
+    load_from_checkpoint = 'alexedw/dense-train-fast-1',
     load_from_checkpoint_local = False,
 
     temperature = 0.7,
