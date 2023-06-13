@@ -77,7 +77,7 @@ def train(
     min_lr = 1e-6, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
-    iter_num = 6000,
+    iter_num = 5250,
     model_config = GPTConfig.from_pretrained('EleutherAI/pythia-410m'),
     load_from_huggingface = None,#'EleutherAI/pythia-410m',
     load_from_huggingface_revision = 'main',
@@ -159,13 +159,6 @@ def train(
             pass
 
     if not eval_only:
-        train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps)
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=TrainBatch.collate_fn, num_workers=2, prefetch_factor=2)
-        train_dataloader_iter = iter(train_dataloader)
-
-        def get_batch():
-            return next(train_dataloader_iter).to(device)
-
         # initialize a GradScaler. If enabled=False scaler is a no-op
         scaler_enabled = dtype == torch.float16
         scaler = torch.cuda.amp.GradScaler(enabled=scaler_enabled, init_scale=2**12, growth_interval=1000)
@@ -247,6 +240,15 @@ def train(
         
         model.train()
         return test_all()         
+
+    if not eval_only:
+        train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=TrainBatch.collate_fn, num_workers=2, prefetch_factor=2)
+        train_dataloader_iter = iter(train_dataloader)
+
+        def get_batch():
+            return next(train_dataloader_iter).to(device)
+
 
     # learning rate decay scheduler (cosine with warmup)
     def get_lr(it):
