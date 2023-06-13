@@ -32,7 +32,7 @@ import random
 
 def train(
     # -----------------------------------------------------------------------------
-    eval_only = False, # if True, script exits right after the first eval
+    eval_only = True, # if True, script exits right after the first eval
     train_only = False,
 
     # I/O
