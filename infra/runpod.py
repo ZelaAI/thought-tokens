@@ -105,6 +105,7 @@ def create_spot_pod(gpu_id, bidPerGpu):
               dockerArgs: ""
               ports: "22/tcp"
               volumeMountPath: "/workspace"
+              supportPublicIp: true
               startSsh: true
               env: [{{ 
                 key: "JUPYTER_PASSWORD", value: "{jupyter_password}",
@@ -209,7 +210,8 @@ def run_job(
     
     gpu_details = get_gpu_by_keyword(gpu)
     gpu_id = gpu_details[0]['id']
-    bidPerGpuHourly = gpu_details[0]['lowestPrice']['minimumBidPrice']
+
+    bidPerGpuHourly = 1.1#gpu_details[0]['lowestPrice']['minimumBidPrice'] + 0.01
 
     print(f'Got GPU details for {gpu_id}, price: ${bidPerGpuHourly}/h')
     start = time.time()
