@@ -1,12 +1,13 @@
 from tinygrad.tensor import Tensor
-from tinygrad.nn import Linear
+from tinygrad.nn import Linear, LayerNorm, Embedding
 from core.model import GPTConfig
-
+import math
+import numpy as np
 
 class MLP:
     def __init__(self, config: GPTConfig):
-        self.c_fc = Linear(config.n_embd, config.n_embd_proj, bias=True)
-        self.c_proj = Linear(config.n_embd_proj, config.n_embd, bias=True)
+        self.c_fc = Linear(config.n_embd, config.n_embd_proj, bias=config.bias)
+        self.c_proj = Linear(config.n_embd_proj, config.n_embd, bias=config.bias)
 
     def __call__(self, x):
         x = self.c_fc(x)
@@ -44,4 +45,95 @@ def rotary_apply(t, sin, cos, rotary_ndims):
 
 def apply_rotary_mask(mask, sin_cached, cos_cached):
     # mask is (B, T)       # sin, cos are (T, D)        # output is (B, 1, T, D)
-    return sin_cached[mask, :].unsqueeze(1), cos_cached[mask, :].unsqueeze(1)
+    sin = Tensor(sin_cached.numpy()[mask.numpy(), :]).unsqueeze(1)
+    cos = Tensor(cos_cached.numpy()[mask.numpy(), :]).unsqueeze(1)
+    
+    return sin, cos
+
+
+
+
+
+
+class CausalSelfAttention:
+    def __init__(self, config):
+        assert config.n_embd % config.n_head == 0
+        self.c_attn = Linear(config.n_embd, 3 * config.n_embd, bias=config.bias)
+        self.c_proj = Linear(config.n_embd, config.n_embd, bias=config.bias)
+    
+        self.n_head = config.n_head
+        self.n_embd = config.n_embd
+        
+        self.rotary_ndims = int((config.n_embd // config.n_head) * config.rotary_pct)
+    
+    def __call__(self, x, sin, cos, attn_mask=None):
+        B, T, C = x.shape
+        head_size = C // self.n_head
+        
+        qkv = self.c_attn(x)
+        qkv = qkv.reshape(B, T, self.n_head, 3 * head_size)
+        
+        q, k, v = qkv[:, :, :, :head_size], qkv[:, :, :, head_size: 2 * head_size], qkv[:, :, :, 2 * head_size:]
+        
+        k = k.reshape(B, T, self.n_head, head_size).transpose(1, 2)
+        q = q.reshape(B, T, self.n_head, head_size).transpose(1, 2)
+        v = v.reshape(B, T, self.n_head, head_size).transpose(1, 2)
+        
+        q = rotary_apply(q, sin, cos, self.rotary_ndims)
+        k = rotary_apply(k, sin, cos, self.rotary_ndims)
+                
+        scores = q.matmul(k.transpose(-2, -1)) * (1.0 / math.sqrt(k.shape[-1]))
+        
+        if attn_mask is None:
+            attn_mask = np.full((1, 1, T, T), float("-inf"), dtype=np.float32)
+            attn_mask = np.triu(attn_mask, k=1)  # TODO: this is hard to do in tinygrad
+            attn_mask = Tensor(attn_mask)
+        
+        scores = scores + attn_mask
+
+        scores = scores.softmax(axis=-1)
+        result = scores.matmul(v)
+        
+        result = result.transpose(1, 2).reshape(B, T, C)
+        result = self.c_proj(result)
+        return result
+
+
+class Block:
+    def __init__(self, config):
+        super().__init__()
+        self.ln_1 = LayerNorm(config.n_embd, eps=config.layer_norm_eps)
+        self.attn = CausalSelfAttention(config)
+        self.ln_2 = LayerNorm(config.n_embd, eps=config.layer_norm_eps)
+        self.mlp = MLP(config)
+
+    def __call__(self, x, sin, cos, attn_mask):
+        # Parallelize attention and MLP layers
+        # x = x + attn(ln1(x)) + mlp(ln2(x))
+        x = self.attn(self.ln_1(x), sin, cos, attn_mask=attn_mask) + self.mlp(self.ln_2(x)) + x
+        return x
+
+
+class GPT:
+    def __init__(self, config):
+        
+        self.wte = Embedding(config.vocab_size, config.n_embd)
+        self.h = [Block(config) for _ in range(config.n_layer)]
+        self.ln_f = LayerNorm(config.n_embd, eps=config.layer_norm_eps),
+        self.lm_head = Linear(config.n_embd, config.vocab_size, bias=False)
+        self.sin_cached, self.cos_cached = get_rotary_sin_cos(2048, config)
+        
+    def __call__(self, ids):
+        x = self.wte(ids)
+        
+        sin, cos = apply_rotary_mask(Tensor.arange(x.shape[-1]), self.sin_cached, self.cos_cached)
+        
+        for block in self.h:
+            x = block(x, sin, cos, attn_mask=None)
+        
+        x = self.ln_f(x)
+        logits = self.lm_head(x)
+        
+        return logits
+        
+

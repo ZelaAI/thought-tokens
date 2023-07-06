@@ -130,7 +130,9 @@ class CausalSelfAttention(nn.Module):
             attn_mask = attn_mask.float().masked_fill(attn_mask == 0, -float('inf')) - 1 if attn_mask.dtype==torch.bool else attn_mask
             
             att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+            
             att = att + attn_mask
+
             att = F.softmax(att, dim=-1)
             att = self.attn_dropout(att)
             y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)            
