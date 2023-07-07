@@ -2,7 +2,7 @@
 # Then we're going to rewrite against it in tinygrad.
 import pytest
 from core.model import GPTConfig, GPT, get_rotary_sin_cos, rotary_apply, CausalSelfAttention, MLP, DenseCapture, DenseInject, Block, apply_rotary_mask
-from core.model_tiny import MLP as TinyMLP, get_rotary_sin_cos as tiny_get_rotary_sin_cos, rotary_apply as tiny_rotary_apply, apply_rotary_mask as tiny_apply_rotary_mask, CausalSelfAttention as TinyCausalSelfAttention, Block as TinyBlock
+from core.model_tiny import MLP as TinyMLP, get_rotary_sin_cos as tiny_get_rotary_sin_cos, rotary_apply as tiny_rotary_apply, CausalSelfAttention as TinyCausalSelfAttention, Block as TinyBlock, GPT as TinyGPT
 import torch
 from tinygrad.tensor import Tensor
 import numpy as np
@@ -37,27 +37,14 @@ def test_get_rotary_sin_cos():
     config = GPTConfig()
     max_seq_len = 1024
     
-    sin, cos = get_rotary_sin_cos(max_seq_len, config)
+    sin_cached, cos_cached = get_rotary_sin_cos(max_seq_len, config)
+    sin, cos = apply_rotary_mask(torch.arange(max_seq_len, dtype=torch.long).unsqueeze(0), sin_cached, cos_cached)
+    
     tiny_sin, tiny_cos = tiny_get_rotary_sin_cos(max_seq_len, config)
 
     np.testing.assert_allclose(sin.numpy(), tiny_sin.numpy(), atol=5e-4, rtol=1e-5)
     np.testing.assert_allclose(cos.numpy(), tiny_cos.numpy(), atol=5e-4, rtol=1e-5)    
 
-
-def test_apply_rotary_mask():
-    pos_mask = torch.arange(1024, dtype=torch.long).unsqueeze(0)
-    pos_mask_tiny = Tensor(pos_mask.numpy())
-    
-    sin_cached, cos_cached = get_rotary_sin_cos(1024, GPTConfig())
-    tiny_sin_cached, tiny_cos_cached = Tensor(sin_cached.numpy()), Tensor(cos_cached.numpy())
-    
-    sin, cos = apply_rotary_mask(pos_mask, sin_cached, cos_cached)
-    tiny_sin, tiny_cos = tiny_apply_rotary_mask(pos_mask_tiny, tiny_sin_cached, tiny_cos_cached)
-    
-    np.testing.assert_allclose(sin.numpy(), tiny_sin.numpy(), atol=5e-4, rtol=1e-5)
-    np.testing.assert_allclose(cos.numpy(), tiny_cos.numpy(), atol=5e-4, rtol=1e-5)
-
-    
     
 def test_rotary_apply():
     batch_size, n_head, seq_length, head_size, rotary_pct = 4, 8, 1024, 128, 0.25
@@ -98,7 +85,7 @@ def test_casual_self_attention():
         tiny_causal_self_attention.c_attn.bias.assign(Tensor(causal_self_attention.c_attn.bias.numpy()))
         tiny_causal_self_attention.c_proj.weight.assign(Tensor(causal_self_attention.c_proj.weight.numpy()))
         tiny_causal_self_attention.c_proj.bias.assign(Tensor(causal_self_attention.c_proj.bias.numpy()))
-        
+
     output = causal_self_attention(x, sin, cos).detach().numpy()
     output_tiny = tiny_causal_self_attention(tiny_x, tiny_sin, tiny_cos).numpy()
     np.testing.assert_allclose(output_tiny, output, atol=5e-4, rtol=1e-5)
@@ -135,3 +122,41 @@ def test_block():
     output = block(x, sin, cos, None).detach().numpy()
     output_tiny = tiny_block(tiny_x, tiny_sin, tiny_cos, None).numpy()
     np.testing.assert_allclose(output_tiny, output, atol=5e-4, rtol=1e-5)
+
+def test_gpt():
+    batch_size, seq_length = 4, 64
+    config = GPTConfig(block_size=seq_length)
+    
+    x = torch.randint(0, 1000, (batch_size, seq_length))
+    tiny_x = Tensor(x.numpy())  
+
+    gpt = GPT(config)
+    tiny_gpt = TinyGPT(config)
+    
+    # copy the weights from the original model to the tinygrad model
+    with torch.no_grad():
+        tiny_gpt.ln_f.weight.assign(
+            Tensor(gpt.transformer.ln_f.weight.numpy())
+        )
+        tiny_gpt.ln_f.bias.assign(Tensor(gpt.transformer.ln_f.bias.numpy()))
+        tiny_gpt.wte.weight.assign(Tensor(gpt.transformer.wte.weight.numpy()))
+        tiny_gpt.lm_head.weight.assign(Tensor(gpt.lm_head.weight.numpy()))
+        
+        for i in range(config.n_layer):
+            tiny_gpt.h[i].ln_1.weight.assign(Tensor(gpt.transformer.h[i].ln_1.weight.numpy()))
+            tiny_gpt.h[i].ln_1.bias.assign(Tensor(gpt.transformer.h[i].ln_1.bias.numpy()))
+            tiny_gpt.h[i].attn.c_attn.weight.assign(Tensor(gpt.transformer.h[i].attn.c_attn.weight.numpy()))
+            tiny_gpt.h[i].attn.c_attn.bias.assign(Tensor(gpt.transformer.h[i].attn.c_attn.bias.numpy()))
+            tiny_gpt.h[i].attn.c_proj.weight.assign(Tensor(gpt.transformer.h[i].attn.c_proj.weight.numpy()))
+            tiny_gpt.h[i].attn.c_proj.bias.assign(Tensor(gpt.transformer.h[i].attn.c_proj.bias.numpy()))
+            tiny_gpt.h[i].ln_2.weight.assign(Tensor(gpt.transformer.h[i].ln_2.weight.numpy()))
+            tiny_gpt.h[i].ln_2.bias.assign(Tensor(gpt.transformer.h[i].ln_2.bias.numpy()))
+            tiny_gpt.h[i].mlp.c_fc.weight.assign(Tensor(gpt.transformer.h[i].mlp.c_fc.weight.numpy()))
+            tiny_gpt.h[i].mlp.c_fc.bias.assign(Tensor(gpt.transformer.h[i].mlp.c_fc.bias.numpy()))
+            tiny_gpt.h[i].mlp.c_proj.weight.assign(Tensor(gpt.transformer.h[i].mlp.c_proj.weight.numpy()))
+            tiny_gpt.h[i].mlp.c_proj.bias.assign(Tensor(gpt.transformer.h[i].mlp.c_proj.bias.numpy()))
+
+    output = gpt(x)[0].detach().numpy()
+    output_tiny = tiny_gpt(tiny_x).numpy()
+    
+    np.testing.assert_allclose(output_tiny, output, atol=5e-3, rtol=5e-5)

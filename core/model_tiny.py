@@ -24,8 +24,8 @@ def get_rotary_sin_cos(max_seq_len, config, base=10000):
     
     emb = Tensor.cat(freqs, freqs, dim=-1)
 
-    cos = emb.cos()
-    sin = emb.sin()
+    cos = emb.cos().unsqueeze(0).unsqueeze(0)
+    sin = emb.sin().unsqueeze(0).unsqueeze(0)
     return sin, cos
 
 def rotate_half(x):
@@ -42,18 +42,6 @@ def rotary_apply(t, sin, cos, rotary_ndims):
     t_embed = (t_rot * cos) + (rotate_half(t_rot) * sin)
     # Re-join
     return Tensor.cat(t_embed, t_pass, dim=-1)    
-
-def apply_rotary_mask(mask, sin_cached, cos_cached):
-    # mask is (B, T)       # sin, cos are (T, D)        # output is (B, 1, T, D)
-    sin = Tensor(sin_cached.numpy()[mask.numpy(), :]).unsqueeze(1)
-    cos = Tensor(cos_cached.numpy()[mask.numpy(), :]).unsqueeze(1)
-    
-    return sin, cos
-
-
-
-
-
 
 class CausalSelfAttention:
     def __init__(self, config):
@@ -101,7 +89,6 @@ class CausalSelfAttention:
 
 class Block:
     def __init__(self, config):
-        super().__init__()
         self.ln_1 = LayerNorm(config.n_embd, eps=config.layer_norm_eps)
         self.attn = CausalSelfAttention(config)
         self.ln_2 = LayerNorm(config.n_embd, eps=config.layer_norm_eps)
@@ -116,20 +103,17 @@ class Block:
 
 class GPT:
     def __init__(self, config):
-        
         self.wte = Embedding(config.vocab_size, config.n_embd)
         self.h = [Block(config) for _ in range(config.n_layer)]
-        self.ln_f = LayerNorm(config.n_embd, eps=config.layer_norm_eps),
+        self.ln_f = LayerNorm(config.n_embd, eps=config.layer_norm_eps)
         self.lm_head = Linear(config.n_embd, config.vocab_size, bias=False)
-        self.sin_cached, self.cos_cached = get_rotary_sin_cos(2048, config)
+        self.sin, self.cos = get_rotary_sin_cos(config.block_size, config)
         
     def __call__(self, ids):
         x = self.wte(ids)
         
-        sin, cos = apply_rotary_mask(Tensor.arange(x.shape[-1]), self.sin_cached, self.cos_cached)
-        
         for block in self.h:
-            x = block(x, sin, cos, attn_mask=None)
+            x = block(x, self.sin, self.cos, attn_mask=None)
         
         x = self.ln_f(x)
         logits = self.lm_head(x)
