@@ -121,3 +121,27 @@ class GPT:
         return logits
         
 
+    @classmethod
+    def state_dict_from_huggingface(cls, huggingface_model_name, revision="main"):
+        from transformers import GPTNeoXForCausalLM
+        sd_hf = GPTNeoXForCausalLM.from_pretrained(huggingface_model_name, revision=revision).state_dict()
+
+        def rename_key(k):
+            # Remove .transformer    
+            k = k.replace('gpt_neox.layers', 'h')
+            # Attention
+            k = k.replace('.attention.dense.', '.attn.c_proj.')
+            k = k.replace('.attention.query_key_value.', '.attn.c_attn.')
+            # MLP
+            k = k.replace('.mlp.dense_h_to_4h.', '.mlp.c_fc.')
+            k = k.replace('.mlp.dense_4h_to_h.', '.mlp.c_proj.')
+            # LayerNorm
+            k = k.replace('.input_layernorm.', '.ln_1.')
+            k = k.replace('.post_attention_layernorm.', '.ln_2.')
+            # Embedding
+            k = k.replace('gpt_neox.embed_in.', 'wte.')
+            k = k.replace('gpt_neox.final_layer_norm.', 'ln_f.')
+            k = k.replace('embed_out.', 'lm_head.')
+            return k
+
+        return {rename_key(k):Tensor(v.numpy()) for k,v in sd_hf.items()}

@@ -6,6 +6,8 @@ from core.model_tiny import MLP as TinyMLP, get_rotary_sin_cos as tiny_get_rotar
 import torch
 from tinygrad.tensor import Tensor
 import numpy as np
+from tinygrad.state import load_state_dict
+
 
 def test_mlp():
     batch_size, seq_length = 4, 64
@@ -160,3 +162,25 @@ def test_gpt():
     output_tiny = tiny_gpt(tiny_x).numpy()
     
     np.testing.assert_allclose(output_tiny, output, atol=5e-3, rtol=5e-5)
+    
+def test_load_from_huggingface():
+    batch_size, seq_length = 4, 64
+    config = GPTConfig.from_pretrained("EleutherAI/pythia-70m")
+    config.block_size = seq_length
+    
+    model = GPT(config)
+    state_dict = GPT.state_dict_from_huggingface("EleutherAI/pythia-70m")
+    model.load_state_dict(state_dict)
+
+    tiny_model = TinyGPT(config)
+    tiny_state_dict = TinyGPT.state_dict_from_huggingface("EleutherAI/pythia-70m")
+    load_state_dict(tiny_model, tiny_state_dict, strict=False)
+    
+    x = torch.randint(1, 50000, (batch_size, seq_length))
+    tiny_x = Tensor(x.numpy())
+    
+    output = model(x)[0].detach().numpy()
+    output_tiny = tiny_model(tiny_x).numpy()
+
+    np.testing.assert_allclose(output_tiny, output, atol=5e-2, rtol=5e-2)
+        
