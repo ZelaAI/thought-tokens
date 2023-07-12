@@ -8,7 +8,6 @@ from tinygrad.tensor import Tensor
 import numpy as np
 from tinygrad.state import load_state_dict
 
-
 def test_mlp():
     batch_size, seq_length = 4, 64
     config = GPTConfig(

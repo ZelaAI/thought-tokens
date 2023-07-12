@@ -113,7 +113,7 @@ class GPT:
         x = self.wte(ids)
         
         for block in self.h:
-            x = block(x, self.sin, self.cos, attn_mask=None)
+            x = block(x, self.sin[:,:,:x.shape[1],:], self.cos[:,:,:x.shape[1],:], attn_mask=None)
         
         x = self.ln_f(x)
         logits = self.lm_head(x)
