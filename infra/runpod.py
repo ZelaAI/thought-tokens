@@ -79,10 +79,13 @@ def get_gpu_by_keyword(keyword):
                 memoryInGb
                 secureCloud
                 communityCloud
-                lowestPrice(input: {{gpuCount: 1}}) {{
-                  minimumBidPrice
-                  uninterruptablePrice
-                }}
+                securePrice
+                communityPrice
+                oneMonthPrice
+                threeMonthPrice
+                oneWeekPrice
+                communitySpotPrice
+                secureSpotPrice
               }}
             }}
         """)['gpuTypes']
@@ -101,7 +104,7 @@ def create_spot_pod(gpu_id, bidPerGpu):
               minMemoryInGb: 15
               gpuTypeId: "{gpu_id}"
               name: "RunPod Pytorch {gpu_id}"
-              imageName: "runpod/pytorch:3.10-2.0.1-117-devel"
+              imageName: "runpod/pytorch:3.10-2.0.1-120-devel"
               dockerArgs: ""
               ports: "22/tcp"
               volumeMountPath: "/workspace"
@@ -123,7 +126,42 @@ def create_spot_pod(gpu_id, bidPerGpu):
           }}
         }}
     """)['podRentInterruptable']
-    
+
+def create_normal_pod(gpu_id):
+    return send_query(f"""
+        mutation {{
+          podFindAndDeployOnDemand(
+            input: {{
+              cloudType: ALL
+              gpuCount: 1
+              volumeInGb: 30
+              containerDiskInGb: 30
+              minVcpuCount: 2
+              minMemoryInGb: 15
+              gpuTypeId: "{gpu_id}"
+              name: "RunPod Pytorch {gpu_id}"
+              imageName: "runpod/pytorch:3.10-2.0.1-120-devel"
+              dockerArgs: ""
+              ports: "22/tcp"
+              volumeMountPath: "/workspace"
+              startSsh: true
+              env: [{{ 
+                key: "JUPYTER_PASSWORD", value: "{jupyter_password}",
+              }}, {{
+                key: "PUBLIC_KEY", value: "{ssh_public_key}",
+              }}]
+            }}
+          ) {{
+            id
+            imageName
+            env
+            machineId
+            machine {{
+              podHostId
+            }}
+          }}
+        }}
+    """)['podFindAndDeployOnDemand']
 
 def get_pods():   
     return send_query("""
@@ -196,8 +234,7 @@ def terminate_pod(id):
     
 
 def run_job(
-    gpu = 'A100',
-    # gpu = 'A100 SXM',
+    gpu = 'A100 SXM',
     script = 'touch test.txt',
     debug = False,
     **kwargs
@@ -209,13 +246,19 @@ def run_job(
     
     gpu_details = get_gpu_by_keyword(gpu)
     gpu_id = gpu_details[0]['id']
-    bidPerGpuHourly = gpu_details[0]['lowestPrice']['minimumBidPrice']
+    bidPerGpuHourly = gpu_details[0]['secureSpotPrice']
+    bidPerGpuHourlyNormal = gpu_details[0]['securePrice']
 
-    print(f'Got GPU details for {gpu_id}, price: ${bidPerGpuHourly}/h')
+    print(f'Got GPU details for {gpu_id}, price: ${bidPerGpuHourly}/h SPOT ${bidPerGpuHourlyNormal}/h NORMAL')
     start = time.time()
     
     new_pod = create_spot_pod(gpu_id, bidPerGpuHourly)
-    print('Created new pod with ID:', new_pod['id'], '... waiting to connect.')
+    if new_pod is None:
+        print('Failed to create spot pod, trying normal pod.')
+        bidPerGpuHourly = bidPerGpuHourlyNormal
+        new_pod = create_normal_pod(gpu_id)
+    
+    print(f'Created new pod with ID:{new_pod["id"]} for ${bidPerGpuHourly}/h ... waiting to connect.')
     pod = poll_for_pod(new_pod['id'])
     ip, port = pod_to_ip_port(pod)
     print('Connecting to pod @', ip, ':', port)
