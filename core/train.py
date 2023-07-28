@@ -3,6 +3,7 @@ import sys
 import time
 import math
 from contextlib import nullcontext
+from core.tokenizer import Tokenizer
 from core.utils import TokensPerSecondTimer, mint_names
 
 from data.packer import Packer
@@ -27,7 +28,7 @@ from data.train_sequence import TrainSequence, TrainBatch
 
 from multiprocessing import Process
 
-from core.model import GPTConfig, GPT, Tokenizer
+from core.model import GPTConfig, GPT
 import random
 
 def train(

@@ -1,6 +1,6 @@
 import pytest
 import torch
-from data.train_sequence import TrainSequence, THOUGHT_TOKEN_ID, max_seq_len
+from data.train_sequence import TrainSequence, max_seq_len
 
 def test_basic_inputs_and_targets():
     tokens = torch.arange(10)  # just an example, use your own tensor here

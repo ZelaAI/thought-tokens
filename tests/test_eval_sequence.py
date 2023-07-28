@@ -1,5 +1,5 @@
 import pytest
-from core.model import Tokenizer
+from core.tokenizer import Tokenizer
 from data.eval_sequence import EvalSequence
 import torch
 

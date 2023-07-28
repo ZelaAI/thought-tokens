@@ -5,35 +5,10 @@ Uses Andrej Karpathy's nanoGPT and Huggingface/EleutherAI's GPTNeoX as starting 
 import math
 import inspect
 from dataclasses import dataclass
-import functools
 
 import torch
 import torch.nn as nn
-from transformers import GPTNeoXTokenizerFast
 from torch.nn import functional as F
-
-THOUGHT_TOKEN_ID = 50277
-
-class Tokenizer:
-    def __init__(self, name = 'EleutherAI/pythia-410m'):
-        self.tokenizer = GPTNeoXTokenizerFast.from_pretrained(name)
-
-        self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
-        # self.tokenizer.add_tokens(['<|dense|>'])        
-        # self.dense_token_id = self.tokenizer.encode('<|dense|>')[0]
-        # assert THOUGHT_TOKEN_ID == self.dense_token_id
-    
-    @functools.lru_cache(maxsize=None)
-    def _cached_encode(self, value):
-        return self.tokenizer.encode(value)
-
-    def encode(self, value):
-        cached_result = self._cached_encode(value)
-        return torch.tensor(cached_result, dtype=torch.long)
-    
-    def decode(self, ids):
-        return self.tokenizer.decode(ids, skip_special_tokens=True)
-
 
 def get_rotary_sin_cos(max_seq_len, config, base=10000):
     dim = int((config.n_embd // config.n_head) * config.rotary_pct)

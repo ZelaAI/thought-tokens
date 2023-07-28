@@ -2,7 +2,6 @@ from dataclasses import dataclass
 import random
 from typing import List
 import torch
-from core.model import THOUGHT_TOKEN_ID
 from data.sequence import Sequence
 
 max_seq_len = 512
@@ -19,8 +18,6 @@ class TrainSequence(Sequence):
         if len(self.inputs) < max_seq_len:
             self.inputs = torch.cat([self.inputs, torch.zeros(max_seq_len - len(self.inputs), dtype=torch.long)])
             self.targets = torch.cat([self.targets, -torch.ones(max_seq_len - len(self.targets), dtype=torch.long)])
-        
-        self.targets[torch.eq(self.targets, THOUGHT_TOKEN_ID)] = -1
         
         self.length = len(self.inputs)
 
