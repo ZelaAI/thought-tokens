@@ -44,6 +44,7 @@ class AudioTokenizer:
         self.text_id = self.size + 5
         
         self.size += 5
+        print("Loaded Audio Encoder, size:", self.size)
         
     def encode(self, audio_array):
         # expects an audio array already in 24khz

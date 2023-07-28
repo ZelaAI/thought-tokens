@@ -134,6 +134,8 @@ class Block(nn.Module):
 class GPTConfig:
     block_size: int = 1024
     vocab_size: int = 50304 # GPT-2 vocab_size of 50257, padded up to nearest multiple of 64 for efficiency
+    audio_vocab_size: int = 1030
+    
     n_layer: int = 12
     n_head: int = 12
     n_embd: int = 768
@@ -188,12 +190,16 @@ class GPT(nn.Module):
 
         self.transformer = nn.ModuleDict(dict(
             wte = nn.Embedding(config.vocab_size, config.n_embd),
+            wte_audio_1 = nn.Embedding(config.audio_vocab_size, config.n_embd),
+            wte_audio_2 = nn.Embedding(config.audio_vocab_size, config.n_embd),
             # wpe = nn.Embedding(config.block_size, config.n_embd),
             drop = nn.Dropout(config.dropout),
             h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
             ln_f = nn.LayerNorm(config.n_embd, eps=config.layer_norm_eps),
         ))
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        self.audio_head_1 = nn.Linear(config.n_embd, config.audio_vocab_size, bias=False)
+        self.audio_head_2 = nn.Linear(config.n_embd, config.audio_vocab_size, bias=False)
 
         sin_cached, cos_cached = get_rotary_sin_cos(self.config.block_size, self.config)
 
@@ -221,7 +227,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, dense=None, targets=None):
+    def forward(self, idx, targets=None, inputs_audio_1=None, inputs_audio_2=None, targets_audio_1=None, targets_audio_2=None):
         device = idx.device
         b, t = idx.size()
         assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
@@ -232,18 +238,26 @@ class GPT(nn.Module):
         sin, cos = apply_rotary_mask(pos_mask, self.sin_cached, self.cos_cached) 
 
         # forward the GPT model itself
-        tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, n_embd)
-        x = self.transformer.drop(tok_emb)
+        # sum not average token embeddings for each modality
+        x = self.transformer.wte(idx) + self.transformer.wte_audio_1(inputs_audio_1) + self.transformer.wte_audio_2(inputs_audio_2)
         
         for block in self.transformer.h:
             x = block(x, sin, cos, attn_mask=None)
     
         x = self.transformer.ln_f(x)
 
-        logits = self.lm_head(x)        
+        logits = self.lm_head(x)
+        logits_audio_1 = self.audio_head_1(x)
+        logits_audio_2 = self.audio_head_2(x)
+               
         loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1) if targets is not None else None
+        loss_audio_1 = F.cross_entropy(logits_audio_1.view(-1, logits_audio_1.size(-1)), targets_audio_1.view(-1), ignore_index=-1) if targets_audio_1 is not None else None
+        loss_audio_2 = F.cross_entropy(logits_audio_2.view(-1, logits_audio_2.size(-1)), targets_audio_2.view(-1), ignore_index=-1) if targets_audio_2 is not None else None
         
-        return logits, loss
+        if loss is not None and loss_audio_1 is not None and loss_audio_2 is not None:
+            loss = loss + loss_audio_1 + loss_audio_2
+        
+        return logits, logits_audio_1, logits_audio_2, loss
     
     @classmethod
     def state_dict_from_huggingface(cls, huggingface_model_name, revision="main"):
@@ -277,7 +291,7 @@ class GPT(nn.Module):
         for k in sd_keys_hf:
             new_k = rename_key(k)
             sd[new_k] = sd_hf[k]
-        
+            
         return sd
 
     def configure_optimizers(self, weight_decay, learning_rate, betas, device):

@@ -24,7 +24,7 @@ import json
 from tqdm import tqdm
 from data.evals import ModelTester, TestAll
 from data.eval_sequence import EvalSequence, EvalBatch, report_logits
-from data.train_sequence import TrainSequence, TrainBatch
+from data.train_sequence import AudioTrainBatch, TrainSequence, TrainBatch
 
 from multiprocessing import Process
 
@@ -34,7 +34,7 @@ import random
 def train(
     # -----------------------------------------------------------------------------
     eval_only = False, # if True, script exits right after the first eval
-    train_only = False,
+    train_only = True,
 
     # I/O
     eval_interval = 125,
@@ -95,8 +95,6 @@ def train(
     dtype = torch.float16,
     compile = True,
 
-    insert_dense_tokens = 12,
-
     **_kwargs
 ):
   
@@ -143,7 +141,7 @@ def train(
 
     if load_from_huggingface is not None:
         state_dict = GPT.state_dict_from_huggingface(load_from_huggingface, revision=load_from_huggingface_revision)
-        model.load_state_dict(state_dict)
+        model.load_state_dict(state_dict, strict=False)
         state_dict = None
 
     if compile:
@@ -151,7 +149,7 @@ def train(
         model = torch.compile(unoptimized_model) # pytorch 2.0
 
     if not train_only:
-        model_tester = ModelTester(tokenizer, append_dense_tokens=insert_dense_tokens > 0, max_seq_len=max_seq_len)
+        model_tester = ModelTester(tokenizer, append_dense_tokens=False, max_seq_len=max_seq_len)
 
         test_all = TestAllClass(model_tester)
         
@@ -160,8 +158,8 @@ def train(
             pass
 
     if not eval_only:
-        train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps)
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=TrainBatch.collate_fn, num_workers=2, prefetch_factor=2)
+        train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps, audio=True)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=AudioTrainBatch.collate_fn, num_workers=2, prefetch_factor=2)
         train_dataloader_iter = iter(train_dataloader)
 
         def get_batch():
@@ -200,43 +198,44 @@ def train(
     def run_evals():
         model.eval()
         
-        packer = Packer(max_seq_len, model_tester.gather_dataset(test_all))
+        print("Running evals skipped")
+        # packer = Packer(max_seq_len, model_tester.gather_dataset(test_all))
         
-        collate_fn = EvalBatch.packs_to_batch_factory(
-            train=False,
-            causal=True,
-            max_seq_len=max_seq_len,
-            batch_size=batch_size
-        )
+        # collate_fn = EvalBatch.packs_to_batch_factory(
+        #     train=False,
+        #     causal=True,
+        #     max_seq_len=max_seq_len,
+        #     batch_size=batch_size
+        # )
         
-        dataloader = DataLoader(packer, batch_size=batch_size, collate_fn=collate_fn)
-        dataloader_iter = iter(dataloader)
+        # dataloader = DataLoader(packer, batch_size=batch_size, collate_fn=collate_fn)
+        # dataloader_iter = iter(dataloader)
 
-        st, ll, stl, prev_batch = None, None, None, EvalBatch(None, None, None, None, None, None, None, [[]], None)
-        batch = next(dataloader_iter).to(device)
+        # st, ll, stl, prev_batch = None, None, None, EvalBatch(None, None, None, None, None, None, None, [[]], None)
+        # batch = next(dataloader_iter).to(device)
     
-        eval_tokens_per_second_timer = TokensPerSecondTimer(batch_size * max_seq_len)
+        # eval_tokens_per_second_timer = TokensPerSecondTimer(batch_size * max_seq_len)
 
-        while len(batch.packs[0]) > 0 or len(prev_batch.packs[0]) > 0:
-            with ctx:
-                logits, _ = model(batch.inputs, targets=batch.targets)
+        # while len(batch.packs[0]) > 0 or len(prev_batch.packs[0]) > 0:
+        #     with ctx:
+        #         logits, _ = model(batch.inputs, targets=batch.targets)
 
-            todo = report_logits(st, ll, stl, prev_batch.packs)
-            packer.add_to_queue(todo)
+        #     todo = report_logits(st, ll, stl, prev_batch.packs)
+        #     packer.add_to_queue(todo)
 
-            prev_batch = batch
-            batch = next(dataloader_iter).to(device)
+        #     prev_batch = batch
+        #     batch = next(dataloader_iter).to(device)
 
-            st, stl = model.sample_top_p_selective(logits, prev_batch.generate_positions, temperature, top_p)
-            ll = model.loglikelihood_selective(logits, prev_batch.targets, prev_batch.target_pos_mask)
+        #     st, stl = model.sample_top_p_selective(logits, prev_batch.generate_positions, temperature, top_p)
+        #     ll = model.loglikelihood_selective(logits, prev_batch.targets, prev_batch.target_pos_mask)
             
-            st, ll, stl = st.cpu(), ll.cpu(), stl.cpu()
-            logits = None
+        #     st, ll, stl = st.cpu(), ll.cpu(), stl.cpu()
+        #     logits = None
             
-            tokens_per_second = eval_tokens_per_second_timer()
-            # print(f'eval: {tokens_per_second:.0f} tokens/s, packer: {packer}, batch: {batch}', end='\r', flush=True)
-            print(f'eval: {tokens_per_second:.0f} tokens/s  ', end='\r', flush=True)
-        print()
+        #     tokens_per_second = eval_tokens_per_second_timer()
+        #     # print(f'eval: {tokens_per_second:.0f} tokens/s, packer: {packer}, batch: {batch}', end='\r', flush=True)
+        #     print(f'eval: {tokens_per_second:.0f} tokens/s  ', end='\r', flush=True)
+        # print()
         
         model.train()
         return test_all()         
@@ -348,7 +347,7 @@ def train(
                 # looking at the source of that context manager, it just toggles this variable
                 model.require_backward_grad_sync = (micro_step == gradient_accumulation_steps - 1)
             with ctx:
-                _, loss = model(batch.inputs, targets=batch.targets)
+                _, _, _, loss = model(batch.inputs_text, batch.targets_text, batch.inputs_audio_1, batch.inputs_audio_2, batch.targets_audio_1, batch.targets_audio_2)
                 
                 loss = loss / gradient_accumulation_steps
             # immediately async prefetch next batch while model is doing the forward pass on the GPU
