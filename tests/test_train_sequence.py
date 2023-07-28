@@ -17,17 +17,3 @@ def test_padding_works():
     assert torch.allclose(sequence.inputs[len(tokens):], torch.tensor([0,0]))
     assert torch.allclose(sequence.targets[len(tokens):], torch.tensor([-1,-1]))
 
-def test_thought_tokens_added():
-    tokens = torch.arange(100)
-    sequence = TrainSequence(tokens)
-
-    # Count how many thought tokens are in the inputs and targets
-    num_thoughts_in_inputs = torch.sum(sequence.inputs == THOUGHT_TOKEN_ID)
-    num_thoughts_in_targets = torch.sum(sequence.targets == THOUGHT_TOKEN_ID)
-
-    # Check if the count of thought tokens are as expected
-    assert num_thoughts_in_inputs == 12
-    assert num_thoughts_in_targets == 0  # we should be masking them here
-
-    print(sequence.inputs)
-    

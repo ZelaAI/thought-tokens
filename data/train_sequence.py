@@ -13,9 +13,6 @@ class TrainSequence(Sequence):
     Does not support masking between sequences or anything fancy
     """
     def __init__(self, tokens, add_thought_tokens=True):
-        
-        tokens = self.add_thought_tokens(tokens) if add_thought_tokens else tokens
-        
         self.inputs = tokens[:-1]
         self.targets = tokens[1:].clone()
         
@@ -30,25 +27,6 @@ class TrainSequence(Sequence):
     def __str__(self):
         return f"<TrainSequence length={self.length} inputs={self.inputs}, targets={self.targets}>"
 
-    def get_attn_mask_bounds(self):
-        top = torch.arange(self.length, dtype=torch.long)
-        bottom = torch.ones(self.length, dtype=torch.long) * (self.length - 1)
-
-        return top, bottom
-
-    def add_thought_tokens(self, tokens: torch.Tensor):
-        num_to_insert = 32
-        short_tokens = tokens[:-num_to_insert]
-
-        for _ in range(num_to_insert):
-            index = torch.randint(32, len(short_tokens) + 1, (1,))  # get random index
-            left, right = short_tokens.split([index, len(short_tokens) - index])  # split tensor
-
-            # Concatenate left part, THOUGHT_TOKEN_ID, right part
-            short_tokens = torch.cat([left, torch.tensor([THOUGHT_TOKEN_ID], dtype=short_tokens.dtype), right])
-
-        return short_tokens
-
 @dataclass
 class TrainBatch:
     """
@@ -57,16 +35,11 @@ class TrainBatch:
     """
     inputs: torch.Tensor
     targets: torch.Tensor
-    attn_mask_bound_top: torch.Tensor
-    attn_mask_bound_bottom: torch.Tensor
-    max_dense_tokens: int
 
     def to(self, device):
         if 'cpu' not in device:
             self.inputs = self.inputs.to(device, non_blocking=True)
             self.targets = self.targets.to(device, non_blocking=True)
-            self.attn_mask_bound_top = self.attn_mask_bound_top.to(device, non_blocking=True)
-            self.attn_mask_bound_bottom = self.attn_mask_bound_bottom.to(device, non_blocking=True)
         return self
 
     @classmethod
@@ -74,11 +47,4 @@ class TrainBatch:
         inputs = torch.stack([seq.inputs for seq in sequences])
         targets = torch.stack([seq.targets for seq in sequences])
         
-        tops, bottoms = zip(*[seq.get_attn_mask_bounds() for seq in sequences])
-    
-        attn_mask_bound_top = torch.stack(tops)
-        attn_mask_bound_bottom = torch.stack(bottoms)
-        
-        max_dense_tokens = 3
-        
-        return TrainBatch(inputs, targets, attn_mask_bound_top, attn_mask_bound_bottom, max_dense_tokens)
+        return TrainBatch(inputs, targets)

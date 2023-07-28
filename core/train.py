@@ -203,7 +203,7 @@ def train(
         
         collate_fn = EvalBatch.packs_to_batch_factory(
             train=False,
-            causal=model_config.causal,
+            causal=True,
             max_seq_len=max_seq_len,
             batch_size=batch_size
         )
@@ -217,16 +217,8 @@ def train(
         eval_tokens_per_second_timer = TokensPerSecondTimer(batch_size * max_seq_len)
 
         while len(batch.packs[0]) > 0 or len(prev_batch.packs[0]) > 0:
-            dense_input = model.create_dense_inputs(batch.inputs)
-
             with ctx:
-                # pre-load with dense tokens (max depth 3+1)
-                for i in range(min(batch.max_dense_tokens, 3)):
-                    _, dense_out, _ = model(batch.inputs, dense=dense_input, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom, pos_mask=batch.pos_mask)
-
-                    dense_input = model.create_dense_inputs(batch.inputs, dense_out, batch.target_pos_mask)
-
-                logits, _, _ = model(batch.inputs, dense=dense_input, targets=batch.targets, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom, pos_mask=batch.pos_mask)
+                logits, _ = model(batch.inputs, targets=batch.targets)
 
             todo = report_logits(st, ll, stl, prev_batch.packs)
             packer.add_to_queue(todo)
@@ -298,8 +290,6 @@ def train(
             metrics = {
                 "iter": iter_num,
                 "lr": lr,
-                "inject_weights": torch.relu(model.dense_inject.state_dict()['inject_weights']).tolist(),
-                "capture_weights": torch.softmax(model.dense_capture.state_dict()['capture_weights'], dim=0).tolist(),
                 **run_evals(),
             }
             
@@ -350,7 +340,6 @@ def train(
         # forward backward update, with optional gradient accumulation to simulate larger batch size
         # and using the GradScaler if data type is float16
         for micro_step in range(gradient_accumulation_steps):
-            dense_input = model.create_dense_inputs(batch.inputs)
             if ddp:
                 # in DDP training we only need to sync gradients at the last micro step.
                 # the official way to do this is with model.no_sync() context manager, but
@@ -358,13 +347,7 @@ def train(
                 # looking at the source of that context manager, it just toggles this variable
                 model.require_backward_grad_sync = (micro_step == gradient_accumulation_steps - 1)
             with ctx:
-                # pre-load with dense tokens (max depth 3+1)
-                for i in range(min(batch.max_dense_tokens, 3)):
-                    # preloading dense inputs
-                    _, dense_out, _ = model(batch.inputs, dense=dense_input)#, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom)
-                    dense_input = model.create_dense_inputs(batch.inputs, dense_out)
-
-                _, _, loss = model(batch.inputs, dense=dense_input, targets=batch.targets)#, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom)
+                _, loss = model(batch.inputs, targets=batch.targets)
                 
                 loss = loss / gradient_accumulation_steps
             # immediately async prefetch next batch while model is doing the forward pass on the GPU
