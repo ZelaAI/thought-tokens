@@ -334,8 +334,10 @@ def train(
                 api.create_branch(repo_id=repo_id, branch=str(iter_num), exist_ok=True, repo_type='model')
                 
                 # Start a new process for the upload
-                upload_process = Process(target=upload_folder_to_hf, args=(api, checkpoint_dir, repo_id, str(iter_num)))
-                upload_process.start()
+                # upload_process = Process(target=upload_folder_to_hf, args=(api, checkpoint_dir, repo_id, str(iter_num)))
+                # upload_process.start()
+                # Start in main process, blocking
+                upload_folder_to_hf(api, checkpoint_dir, repo_id, str(iter_num))
 
         # forward backward update, with optional gradient accumulation to simulate larger batch size
         # and using the GradScaler if data type is float16
