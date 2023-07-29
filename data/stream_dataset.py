@@ -15,7 +15,7 @@ We're using this 'special' dataset because the HuggingFace Datasets when
 streamed don't quite have enough info to performantly 'skip' shards.
 """
 class HuggingfaceStreamDataset(IterableDataset):
-    def __init__(self, huggingface_name, skip_to=0, audio=False):
+    def __init__(self, huggingface_name, skip_to=0, audio=False, loop=False):
         self.huggingface_name = huggingface_name
         self.skip_to = skip_to
         self.audio = audio
@@ -86,3 +86,8 @@ class HuggingfaceStreamDataset(IterableDataset):
         
             
             global_index += increase
+
+        if self.loop:
+            # loop back to the beginning
+            self.skip_to = 0
+            return self.__iter__()

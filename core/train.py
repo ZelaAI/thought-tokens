@@ -64,7 +64,7 @@ def train(
     tokenizer_name = 'EleutherAI/pythia-410m',
 
     # adamw optimizer
-    max_iters = 10000,
+    max_iters = 750*5,
     learning_rate = 1.5e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
@@ -73,8 +73,8 @@ def train(
 
     # learning rate decay settings
     decay_lr = True, # whether to decay the learning rate
-    warmup_iters = 150, # how many steps to warm up for
-    lr_decay_iters = 750, # should be ~= max_iters per Chinchilla
+    warmup_iters = 375, # how many steps to warm up for
+    lr_decay_iters = 750*5, # should be ~= max_iters per Chinchilla
     min_lr = 1e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
@@ -158,7 +158,7 @@ def train(
             pass
 
     if not eval_only:
-        train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps, audio=True)
+        train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps, audio=True, loop=True)
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=AudioTrainBatch.collate_fn, num_workers=2, prefetch_factor=2)
         train_dataloader_iter = iter(train_dataloader)
 
