@@ -5,7 +5,7 @@ import torch
 import math
 import json
 
-from data.train_sequence import TrainSequence
+from data.train_sequence import TrainSequence, AudioTrainSequence
 
 """
 This is a custom IterableDataset that manually loads shards from a HuggingFace Hub
@@ -15,10 +15,11 @@ We're using this 'special' dataset because the HuggingFace Datasets when
 streamed don't quite have enough info to performantly 'skip' shards.
 """
 class HuggingfaceStreamDataset(IterableDataset):
-    def __init__(self, huggingface_name, skip_to=0):
+    def __init__(self, huggingface_name, skip_to=0, audio=False):
         self.huggingface_name = huggingface_name
         self.skip_to = skip_to
-
+        self.audio = audio
+        
         # start by getting the config
         config_file = hf_hub_download(
             repo_id=self.huggingface_name,
@@ -73,9 +74,15 @@ class HuggingfaceStreamDataset(IterableDataset):
                 self.load_shard(shard_id + 1)
 
             shard = self.shards[shard_id]
+            
+            if self.audio:
+                text_tokens = torch.tensor(shard.iloc[shard_offset]['text_tokens'])
+                audio_tokens_1 = torch.tensor(shard.iloc[shard_offset]['audio_tokens_1'])
+                audio_tokens_2 = torch.tensor(shard.iloc[shard_offset]['audio_tokens_2'])
+                yield AudioTrainSequence(text_tokens, audio_tokens_1, audio_tokens_2)
+            else:
+                tokens = torch.tensor(shard.iloc[shard_offset]['tokens'])
+                yield TrainSequence(tokens)
         
-            tokens = torch.tensor(shard.iloc[shard_offset]['tokens'])
-        
-            yield TrainSequence(tokens)
             
             global_index += increase
