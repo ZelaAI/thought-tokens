@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from tqdm import tqdm
 
 def get_rotary_sin_cos(max_seq_len, config, base=10000):
     dim = int((config.n_embd // config.n_head) * config.rotary_pct)
@@ -355,24 +356,32 @@ class GPT(nn.Module):
         return mfu
 
     @torch.no_grad()
-    def generate(self, idx, max_new_tokens, temperature=0.7, top_p=0.9):
+    def generate(self, idx, inputs_audio_1, inputs_audio_2, max_new_tokens, temperature=0.7, top_p=0.9):
         """
         Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
         the sequence max_new_tokens times, feeding the predictions back into the model each time.
         Most likely you'll want to make sure to be in model.eval() mode of operation for this.
         """
 
-        for _ in range(max_new_tokens):
+        for _ in tqdm(range(max_new_tokens)):
             # if the sequence context is growing too long we must crop it at block_size
-            logits, _ = self(idx)
+            logits_text, logits_audio_1, logits_audio_2, _ = self(idx, None, inputs_audio_1, inputs_audio_2)
+
             # pluck the logits at the final step and scale by desired temperature
-            logits = logits[:, -1, :]
+            logits_text = logits_text[:, -1, :]
+            logits_audio_1 = logits_audio_1[:, -1, :]
+            logits_audio_2 = logits_audio_2[:, -1, :]
+
             # sample from the top-p distribution
-            idx_next = self.sample_top_p(logits, temperature, top_p)
+            idx_next = self.sample_top_p(logits_text, temperature, top_p)
+            idx_next_audio_1 = self.sample_top_p(logits_audio_1, temperature, top_p)
+            idx_next_audio_2 = self.sample_top_p(logits_audio_2, temperature, top_p)
             # append sampled index to the running sequence and continue
             idx = torch.cat((idx, idx_next), dim=1)
+            inputs_audio_1 = torch.cat((inputs_audio_1, idx_next_audio_1), dim=1)
+            inputs_audio_2 = torch.cat((inputs_audio_2, idx_next_audio_2), dim=1)
 
-        return idx
+        return idx, inputs_audio_1, inputs_audio_2
 
     @torch.no_grad()
     def sample_top_p_selective(self, logits, positions, temperature, top_p):

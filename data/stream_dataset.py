@@ -19,6 +19,7 @@ class HuggingfaceStreamDataset(IterableDataset):
         self.huggingface_name = huggingface_name
         self.skip_to = skip_to
         self.audio = audio
+        self.loop = loop
         
         # start by getting the config
         config_file = hf_hub_download(
