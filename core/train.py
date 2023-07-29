@@ -42,8 +42,8 @@ def train(
 
     # Checkpointing
     out_dir = 'out',
-    checkpoint_interval = 125,
-    upload_checkpoint_interval = 250,
+    checkpoint_interval = 250,
+    upload_checkpoint_interval = 750,
     repo_id = "alexedw/gptx-default",
 
     # wandb logging
@@ -53,11 +53,11 @@ def train(
     wandb_run_group = None,
 
     # data
-    dataset_name = 'ZelaAI/minipile_512_streamable',
+    dataset_name = 'ZelaAI/librispeech_clean_100_2048_streamable', # length 18097 -> 
 
-    gradient_accumulation_steps = 8, # used to simulate larger batch sizes
+    gradient_accumulation_steps = 1, # used to simulate larger batch sizes
     batch_size = 24, # if gradient_accumulation_steps > 1, this is the micro-batch size
-    max_seq_len = 512,
+    max_seq_len = 2048,
     TestAllClass=TestAll,
 
     # evals
@@ -65,7 +65,7 @@ def train(
 
     # adamw optimizer
     max_iters = 10000,
-    learning_rate = 1e-5,
+    learning_rate = 1e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
     beta2 = 0.95,
@@ -73,9 +73,9 @@ def train(
 
     # learning rate decay settings
     decay_lr = True, # whether to decay the learning rate
-    warmup_iters = 1000, # how many steps to warm up for
-    lr_decay_iters = 10000, # should be ~= max_iters per Chinchilla
-    min_lr = 1e-6, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
+    warmup_iters = 250, # how many steps to warm up for
+    lr_decay_iters = 750, # should be ~= max_iters per Chinchilla
+    min_lr = 1e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
     iter_num = 0,

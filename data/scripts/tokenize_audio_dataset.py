@@ -15,7 +15,7 @@ from multiprocessing import Pool, cpu_count
 
 max_seq_len = 2048 + 1 # account for input/target offset
 num_workers = 4
-destination_dataset_repo_id = "ZelaAI/librispeech_clean_100_2048"
+destination_dataset_repo_id = "ZelaAI/librispeech_clean_360_2048"
 
 def tokenize(example, tokenizer, audio_tokenizer):
     text_tokenized = tokenizer.encode(example['text'].lower()).numpy()

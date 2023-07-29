@@ -234,8 +234,8 @@ def terminate_pod(id):
     
 
 def run_job(
-    gpu = 'A4500',
-    # gpu = 'A100 SXM',
+    # gpu = 'A4500',
+    gpu = 'A100 SXM',
     script = 'touch test.txt',
     debug = False,
     **kwargs
