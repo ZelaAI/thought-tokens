@@ -53,7 +53,7 @@ def train(
     wandb_run_group = None,
 
     # data
-    dataset_name = 'ZelaAI/librispeech_clean_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
+    dataset_name = 'ZelaAI/librispeech_tiny_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
 
     gradient_accumulation_steps = 1, # used to simulate larger batch sizes
     batch_size = 24, # if gradient_accumulation_steps > 1, this is the micro-batch size
