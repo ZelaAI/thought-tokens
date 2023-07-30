@@ -56,16 +56,16 @@ def train(
     dataset_name = 'ZelaAI/librispeech_clean_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
 
     gradient_accumulation_steps = 1, # used to simulate larger batch sizes
-    batch_size = 24, # if gradient_accumulation_steps > 1, this is the micro-batch size
+    batch_size = 48, # if gradient_accumulation_steps > 1, this is the micro-batch size
     max_seq_len = 2048,
     TestAllClass=TestAll,
 
     # evals
-    tokenizer_name = 'EleutherAI/pythia-410m',
+    tokenizer_name = 'EleutherAI/pythia-160m',
 
     # adamw optimizer
-    max_iters = 10000, # approx 3 epochs
-    learning_rate = 1e-4,
+    max_iters = 13500, # approx 4 epochs
+    learning_rate = 3e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
     beta2 = 0.95,
@@ -73,14 +73,14 @@ def train(
 
     # learning rate decay settings
     decay_lr = True, # whether to decay the learning rate
-    warmup_iters = 500, # how many steps to warm up for
-    lr_decay_iters = 10000, # should be ~= max_iters per Chinchilla
-    min_lr = 1e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
+    warmup_iters = 750, # how many steps to warm up for
+    lr_decay_iters = 13500, # should be ~= max_iters per Chinchilla
+    min_lr = 3e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
     iter_num = 0,
-    model_config = GPTConfig.from_pretrained('EleutherAI/pythia-410m'),
-    load_from_huggingface = 'EleutherAI/pythia-410m',
+    model_config = GPTConfig.from_pretrained('EleutherAI/pythia-160m'),
+    load_from_huggingface = 'EleutherAI/pythia-160m',
     load_from_huggingface_revision = 'main',
     load_from_checkpoint = None,
     load_from_checkpoint_local = False,
