@@ -178,12 +178,12 @@ def train(
         model.load_state_dict(state_dict)
         state_dict = None
         
-        if not eval_only:
-            optimizer_state_dict = torch.load(hf_hub_download(load_from_checkpoint, "optimizer_state.pt", revision=load_from_checkpoint_revision), map_location=device)
-            optimizer.load_state_dict(optimizer_state_dict)
-            optimizer_state_dict = None
+        # if not eval_only:
+        #     optimizer_state_dict = torch.load(hf_hub_download(load_from_checkpoint, "optimizer_state.pt", revision=load_from_checkpoint_revision), map_location=device)
+        #     optimizer.load_state_dict(optimizer_state_dict)
+        #     optimizer_state_dict = None
         # prevent immediate re-upload of checkpoint
-        iter_num += 1
+        # iter_num += 1
         
     if load_from_checkpoint_local:
         model.load_state_dict(torch.load(f"{out_dir}/{iter_num}/model_state.pt", map_location=device))
