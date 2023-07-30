@@ -43,7 +43,7 @@ def train(
     # Checkpointing
     out_dir = 'out',
     checkpoint_interval = 250,
-    upload_checkpoint_interval = 1000,
+    upload_checkpoint_interval = 500,
     repo_id = "alexedw/gptx-default",
 
     # wandb logging
@@ -53,7 +53,7 @@ def train(
     wandb_run_group = None,
 
     # data
-    dataset_name = 'ZelaAI/librispeech_clean_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
+    dataset_name = 'ZelaAI/lj_speech_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
 
     gradient_accumulation_steps = 1, # used to simulate larger batch sizes
     batch_size = 24, # if gradient_accumulation_steps > 1, this is the micro-batch size
@@ -64,7 +64,7 @@ def train(
     tokenizer_name = 'EleutherAI/pythia-410m',
 
     # adamw optimizer
-    max_iters = 10000, # approx 3 epochs
+    max_iters = 3000, # approx 3 epochs
     learning_rate = 1e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
@@ -73,8 +73,8 @@ def train(
 
     # learning rate decay settings
     decay_lr = True, # whether to decay the learning rate
-    warmup_iters = 500, # how many steps to warm up for
-    lr_decay_iters = 10000, # should be ~= max_iters per Chinchilla
+    warmup_iters = 250, # how many steps to warm up for
+    lr_decay_iters = 3000, # should be ~= max_iters per Chinchilla
     min_lr = 1e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
@@ -82,7 +82,7 @@ def train(
     model_config = GPTConfig.from_pretrained('EleutherAI/pythia-410m'),
     load_from_huggingface = 'EleutherAI/pythia-410m',
     load_from_huggingface_revision = 'main',
-    load_from_checkpoint = None,
+    load_from_checkpoint = 'alexedw/audio-clean-all-run-1',
     load_from_checkpoint_local = False,
 
     temperature = 0.7,
@@ -173,16 +173,16 @@ def train(
         optimizer = model.configure_optimizers(weight_decay, learning_rate, (beta1, beta2), device)
 
     if load_from_checkpoint is not None:        
-        state_dict = torch.load(hf_hub_download(load_from_checkpoint, "model_state.pt", revision=str(iter_num)), map_location=device)
+        state_dict = torch.load(hf_hub_download(load_from_checkpoint, "model_state.pt", revision='10000'), map_location=device)
         model.load_state_dict(state_dict)
         state_dict = None
         
-        if not eval_only:
-            optimizer_state_dict = torch.load(hf_hub_download(load_from_checkpoint, "optimizer_state.pt", revision=str(iter_num)), map_location=device)
-            optimizer.load_state_dict(optimizer_state_dict)
-            optimizer_state_dict = None
+        # if not eval_only:
+        #     optimizer_state_dict = torch.load(hf_hub_download(load_from_checkpoint, "optimizer_state.pt", revision=str(iter_num)), map_location=device)
+        #     optimizer.load_state_dict(optimizer_state_dict)
+        #     optimizer_state_dict = None
         # prevent immediate re-upload of checkpoint
-        iter_num += 1
+        # iter_num += 1
         
     if load_from_checkpoint_local:
         model.load_state_dict(torch.load(f"{out_dir}/{iter_num}/model_state.pt", map_location=device))

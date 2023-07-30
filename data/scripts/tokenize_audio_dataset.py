@@ -1,5 +1,4 @@
 import sys
-
 from data.scripts.librispeech import get_dataset
 sys.path.append('.')
 from datasets import load_dataset, Audio as AudioHF
@@ -15,7 +14,7 @@ from multiprocessing import Pool, cpu_count
 
 max_seq_len = 2048 + 1 # account for input/target offset
 num_workers = 4
-destination_dataset_repo_id = "ZelaAI/librispeech_clean_360_2048"
+destination_dataset_repo_id = "ZelaAI/lj_speech_2048"
 
 def tokenize(example, tokenizer, audio_tokenizer):
     text_tokenized = tokenizer.encode(example['text'].lower()).numpy()
@@ -34,7 +33,7 @@ def tokenize(example, tokenizer, audio_tokenizer):
     construct_audio_audio_tokens_2 = np.concatenate([np.array([audio_tokenizer.start_audio_id]), audio_tokenized[1], np.array([audio_tokenizer.end_audio_id])])
 
 
-    audio_first = random.random() < 0.5
+    audio_first = False#random.random() < 0.5
 
     if audio_first:
         text_tokens = np.concatenate([construct_audio_text_tokens, construct_text_text_tokens])
@@ -79,7 +78,8 @@ def tokenize_chunk(chunk):
 
 if __name__ == '__main__':
     print("Loading dataset...")
-    dataset = get_dataset()
+    dataset = load_dataset("lj_speech", split="train")
+    
     dataset = dataset.cast_column("audio", AudioHF(sampling_rate=24000))
 
     print("Tokenizing dataset...")

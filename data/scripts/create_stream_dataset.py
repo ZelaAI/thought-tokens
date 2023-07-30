@@ -3,9 +3,9 @@ This script loads a Huggingface Dataset, manually shards it, and uploads it to a
 
 For use with `data/stream_dataset.py`
 """
-source_datasets_repo_ids = ["ZelaAI/librispeech_clean_100_2048", "ZelaAI/librispeech_clean_360_2048"]
-num_shards = 30
-destination_dataset_repo_id = "ZelaAI/librispeech_clean_2048_streamable"
+source_datasets_repo_ids = ["ZelaAI/lj_speech_2048"]
+num_shards = 10
+destination_dataset_repo_id = "ZelaAI/lj_speech_2048_streamable"
 
 import os
 import math
