@@ -56,7 +56,7 @@ def train(
     dataset_name = 'ZelaAI/librispeech_clean_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
 
     gradient_accumulation_steps = 1, # used to simulate larger batch sizes
-    batch_size = 48, # if gradient_accumulation_steps > 1, this is the micro-batch size
+    batch_size = 32, # if gradient_accumulation_steps > 1, this is the micro-batch size
     max_seq_len = 2048,
     TestAllClass=TestAll,
 
