@@ -64,7 +64,7 @@ def train(
     tokenizer_name = 'EleutherAI/pythia-410m',
 
     # adamw optimizer
-    max_iters = 3000, # approx 3 epochs
+    max_iters = 10000, # approx 3 epochs
     learning_rate = 1e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
@@ -73,8 +73,8 @@ def train(
 
     # learning rate decay settings
     decay_lr = True, # whether to decay the learning rate
-    warmup_iters = 250, # how many steps to warm up for
-    lr_decay_iters = 3000, # should be ~= max_iters per Chinchilla
+    warmup_iters = 1000, # how many steps to warm up for
+    lr_decay_iters = 10000, # should be ~= max_iters per Chinchilla
     min_lr = 1e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
