@@ -27,6 +27,16 @@ wandb login {wandb_key}
 python -m core.train
 """
 
+dev_script = """
+cd /workspace
+git clone https://github.com/ZelaAI/thought-tokens.git
+cd thought-tokens
+git checkout {branch}
+pip install -r requirements.txt
+huggingface-cli login --token {huggingface_key}
+wandb login {wandb_key}
+"""
+
 with open('infra/runpod.ignore.txt', 'r') as file:
     lines = file.read().strip().split('\n')
 
@@ -296,9 +306,12 @@ def run_job(
     print(f'Total time: {total_time:.2f} minutes', f'Estimated cost: ${bidPerGpuHourly * total_time / 60:.2f}')
 
 if __name__ == '__main__':
-    debug = True if 'debug' in sys.argv else False
+    dev = True if 'dev' in sys.argv else False
+    debug = True if 'debug' in sys.argv or dev else False
+
     branch = get_current_git_branch()
     
-    script = remote_script.format(branch=branch, wandb_key=wandb_key, huggingface_key=huggingface_key)
+    script = dev_script if dev else remote_script
+    script = script.format(branch=branch, wandb_key=wandb_key, huggingface_key=huggingface_key)
     
     run_job(script=script, debug=debug)
