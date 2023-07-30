@@ -27,7 +27,7 @@ class TrainSequence(Sequence):
         self.length = len(self.inputs)
 
     def __str__(self):
-        return f"<TrainSequence length={self.length} inputs={self.inputs}, targets={self.targets}>"
+        return f"<TrainSequence length={self.length} inputs={list(self.inputs)}, targets={list(self.inputs)}>"
 
 @dataclass
 class TrainBatch:
@@ -44,6 +44,10 @@ class TrainBatch:
             self.targets = self.targets.to(device, non_blocking=True)
         return self
 
+    def __hash__(self) -> int:
+        # Used for testing purposes
+        return hash((self.inputs, self.targets))
+    
     @classmethod
     def collate_fn(cls, sequences: List[TrainSequence]):
         inputs = torch.stack([seq.inputs for seq in sequences])

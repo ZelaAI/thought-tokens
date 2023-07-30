@@ -64,7 +64,7 @@ class HuggingfaceStreamDataset(IterableDataset):
 
         global_index = offset + self.skip_to
 
-        while global_index < self.dataset_length:
+        while True:
             shard_id = global_index // self.shard_size
             shard_offset = global_index % self.shard_size
 
@@ -87,8 +87,10 @@ class HuggingfaceStreamDataset(IterableDataset):
         
             
             global_index += increase
-
-        if self.loop:
-            # loop back to the beginning
-            self.skip_to = 0
-            return self.__iter__()
+        
+            # Check if we've reached the end of the dataset
+            if global_index >= self.dataset_length:
+                if self.loop:
+                    global_index = offset  # Reset index to beginning if looping is enabled
+                else:
+                    break  # End the loop if we've processed the whole dataset and looping is not enabled
