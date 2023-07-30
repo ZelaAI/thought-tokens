@@ -240,7 +240,7 @@ class GPT(nn.Module):
 
         # forward the GPT model itself
         # sum not average token embeddings for each modality
-        x = self.transformer.wte(idx) + self.transformer.wte_audio_1(inputs_audio_1) + self.transformer.wte_audio_2(inputs_audio_2)
+        x = (self.transformer.wte(idx) + self.transformer.wte_audio_1(inputs_audio_1) + self.transformer.wte_audio_2(inputs_audio_2)) / 3
         
         for block in self.transformer.h:
             x = block(x, sin, cos, attn_mask=None)
