@@ -43,7 +43,7 @@ def train(
     # Checkpointing
     out_dir = 'out',
     checkpoint_interval = 250,
-    upload_checkpoint_interval = 750,
+    upload_checkpoint_interval = 1000,
     repo_id = "alexedw/gptx-default",
 
     # wandb logging
@@ -53,7 +53,7 @@ def train(
     wandb_run_group = None,
 
     # data
-    dataset_name = 'ZelaAI/librispeech_clean_100_2048_streamable', # length 18097 -> 
+    dataset_name = 'ZelaAI/librispeech_clean_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
 
     gradient_accumulation_steps = 1, # used to simulate larger batch sizes
     batch_size = 24, # if gradient_accumulation_steps > 1, this is the micro-batch size
@@ -64,8 +64,8 @@ def train(
     tokenizer_name = 'EleutherAI/pythia-410m',
 
     # adamw optimizer
-    max_iters = 750*5,
-    learning_rate = 1.5e-4,
+    max_iters = 10000, # approx 3 epochs
+    learning_rate = 1e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
     beta2 = 0.95,
@@ -73,8 +73,8 @@ def train(
 
     # learning rate decay settings
     decay_lr = True, # whether to decay the learning rate
-    warmup_iters = 375, # how many steps to warm up for
-    lr_decay_iters = 750*5, # should be ~= max_iters per Chinchilla
+    warmup_iters = 500, # how many steps to warm up for
+    lr_decay_iters = 10000, # should be ~= max_iters per Chinchilla
     min_lr = 1e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State

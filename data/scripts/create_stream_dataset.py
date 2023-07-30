@@ -15,6 +15,8 @@ from datasets import concatenate_datasets, load_dataset
 
 print("Loading dataset...")
 dataset = concatenate_datasets([load_dataset(v, split="train") for v in source_datasets_repo_ids])
+dataset = dataset.shuffle(seed=42) # Can slow things down, comment out if dataset is singular and already shuffled
+
 dataset_length = len(dataset)
 
 config = {
