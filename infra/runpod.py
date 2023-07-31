@@ -17,7 +17,6 @@ def get_current_git_branch():
     return None
 
 remote_script = """
-cd /workspace
 git clone https://github.com/ZelaAI/thought-tokens.git
 cd thought-tokens
 git checkout {branch}
@@ -28,7 +27,6 @@ python -m core.train
 """
 
 dev_script = """
-cd /workspace
 git clone https://github.com/ZelaAI/thought-tokens.git
 cd thought-tokens
 git checkout {branch}
@@ -244,8 +242,8 @@ def terminate_pod(id):
     
 
 def run_job(
-    gpu = '4090',
-    # gpu = 'H100',
+    # gpu = '4090',
+    gpu = 'A100 SXM',
     script = 'touch test.txt',
     debug = False,
     **kwargs
