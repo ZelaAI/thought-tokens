@@ -80,9 +80,9 @@ def train(
     # Model State
     iter_num = 0,
     model_config = GPTConfig.from_pretrained('EleutherAI/pythia-160m'),
-    load_from_huggingface = 'EleutherAI/pythia-160m',
+    load_from_huggingface = None,
     load_from_huggingface_revision = 'main',
-    load_from_checkpoint = None,
+    load_from_checkpoint = 'alexedw/audio-clean-160m-model-run-1',
     load_from_checkpoint_local = False,
 
     temperature = 0.7,
@@ -167,7 +167,7 @@ def train(
         optimizer = model.configure_optimizers(weight_decay, learning_rate, (beta1, beta2), device)
 
     if load_from_checkpoint is not None:        
-        state_dict = torch.load(hf_hub_download(load_from_checkpoint, "model_state.pt", revision='10000'), map_location=device)
+        state_dict = torch.load(hf_hub_download(load_from_checkpoint, "model_state.pt", revision='4000'), map_location=device)
         model.load_state_dict(state_dict)
         state_dict = None
         
