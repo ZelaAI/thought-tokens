@@ -37,7 +37,7 @@ def train(
     train_only = False,
 
     # I/O
-    eval_interval = 75,
+    eval_interval = 150,
     log_interval = 1,
 
     # Checkpointing
