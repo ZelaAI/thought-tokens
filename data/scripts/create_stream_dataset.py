@@ -6,6 +6,9 @@ For use with `data/stream_dataset.py`
 source_datasets_repo_ids = ["ZelaAI/lj_speech_2048"]
 num_shards = 10
 destination_dataset_repo_id = "ZelaAI/lj_speech_2048_streamable"
+create_validation_set = True
+validation_set_size = 50
+
 
 import os
 import math
@@ -19,11 +22,20 @@ dataset = dataset.shuffle(seed=42) # Can slow things down, comment out if datase
 
 dataset_length = len(dataset)
 
+os.makedirs("dataset_upload.ignore", exist_ok=True)
+
+if create_validation_set:
+    print("Creating validation set...")
+    validation_set = dataset.select(range(dataset_length - validation_set_size, dataset_length))
+    validation_set.to_parquet("dataset_upload.ignore/validation.parquet")
+    dataset = dataset.select(range(dataset_length - validation_set_size))
+    dataset_length = len(dataset)
+
 config = {
     "num_shards": num_shards,
     "dataset_length": dataset_length,
 }
-os.makedirs("dataset_upload.ignore", exist_ok=True)
+
 with open("dataset_upload.ignore/config.json", "w") as f:
     json.dump(config, f)
 
@@ -45,7 +57,7 @@ api.create_repo(repo_id=destination_dataset_repo_id, exist_ok=True, repo_type="d
 
 for i in range(num_shards//10):
     # break up into chunks to avoid timeouts
-    allow_patterns = [f"shard_{shard_id}.parquet" for shard_id in range(i*10, (i+1)*10)] + ["config.json"]
+    allow_patterns = [f"shard_{shard_id}.parquet" for shard_id in range(i*10, (i+1)*10)] + ["config.json", "validation.parquet"]
 
     print(f"Uploading shards {i*10} to {(i+1)*10}...")
 
@@ -56,10 +68,13 @@ for i in range(num_shards//10):
         allow_patterns=allow_patterns
     )
 
+
 print("Cleaning up....")
 os.remove("dataset_upload.ignore/config.json")
 for shard_id in range(num_shards):
     os.remove(f"dataset_upload.ignore/shard_{shard_id}.parquet")
+if validation_set:
+    os.remove("dataset_upload.ignore/validation.parquet")
 os.rmdir("dataset_upload.ignore")
 
 print("Done!")

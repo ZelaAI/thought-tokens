@@ -1,4 +1,4 @@
-from torch.utils.data import IterableDataset
+from torch.utils.data import IterableDataset, Dataset
 from huggingface_hub.file_download import hf_hub_download
 import pandas as pd
 import torch
@@ -94,3 +94,29 @@ class HuggingfaceStreamDataset(IterableDataset):
                     global_index = offset  # Reset index to beginning if looping is enabled
                 else:
                     break  # End the loop if we've processed the whole dataset and looping is not enabled
+
+class HuggingfaceStreamDatasetValidation(Dataset):
+    def __init__(self, huggingface_name, audio=False):
+        self.huggingface_name = huggingface_name
+        self.audio = audio
+
+        parquet = hf_hub_download(
+            repo_id=self.huggingface_name,
+            filename="validation.parquet",
+            repo_type="dataset",
+        )
+        assert parquet is not None, f"Couldn't find validation.parquet in {self.huggingface_name}"
+        self.ds = pd.read_parquet(parquet)
+        
+    def __len__(self):
+        return len(self.ds)
+    
+    def __getitem__(self, idx):
+        if self.audio:
+            text_tokens = torch.tensor(self.ds.iloc[idx]['text_tokens'])
+            audio_tokens_1 = torch.tensor(self.ds.iloc[idx]['audio_tokens_1'])
+            audio_tokens_2 = torch.tensor(self.ds.iloc[idx]['audio_tokens_2'])
+            return AudioTrainSequence(text_tokens, audio_tokens_1, audio_tokens_2)
+        else:
+            tokens = torch.tensor(self.ds.iloc[idx]['tokens'])
+            return TrainSequence(tokens)

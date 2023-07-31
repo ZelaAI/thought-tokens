@@ -244,8 +244,8 @@ def terminate_pod(id):
     
 
 def run_job(
-    # gpu = 'A4500',
-    gpu = 'A100 SXM',
+    gpu = '4090',
+    # gpu = 'H100',
     script = 'touch test.txt',
     debug = False,
     **kwargs
@@ -263,7 +263,7 @@ def run_job(
     print(f'Got GPU details for {gpu_id}, price: ${bidPerGpuHourly}/h SPOT ${bidPerGpuHourlyNormal}/h NORMAL')
     start = time.time()
     
-    new_pod = create_spot_pod(gpu_id, bidPerGpuHourly)
+    new_pod = create_spot_pod(gpu_id, bidPerGpuHourly or 1.0)
     if new_pod is None:
         print('Failed to create spot pod, trying normal pod.')
         bidPerGpuHourly = bidPerGpuHourlyNormal

@@ -7,7 +7,7 @@ from core.tokenizer import Tokenizer
 from core.utils import TokensPerSecondTimer, mint_names
 
 from data.packer import Packer
-from data.stream_dataset import HuggingfaceStreamDataset
+from data.stream_dataset import HuggingfaceStreamDataset, HuggingfaceStreamDatasetValidation
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -34,7 +34,7 @@ import random
 def train(
     # -----------------------------------------------------------------------------
     eval_only = False, # if True, script exits right after the first eval
-    train_only = True,
+    train_only = False,
 
     # I/O
     eval_interval = 125,
@@ -82,7 +82,7 @@ def train(
     model_config = GPTConfig.from_pretrained('EleutherAI/pythia-410m'),
     load_from_huggingface = 'EleutherAI/pythia-410m',
     load_from_huggingface_revision = 'main',
-    load_from_checkpoint = 'alexedw/audio-clean-all-run-1',
+    load_from_checkpoint = None,
     load_from_checkpoint_local = False,
 
     temperature = 0.7,
@@ -149,13 +149,7 @@ def train(
         model = torch.compile(unoptimized_model) # pytorch 2.0
 
     if not train_only:
-        model_tester = ModelTester(tokenizer, append_dense_tokens=False, max_seq_len=max_seq_len)
-
-        test_all = TestAllClass(model_tester)
-        
-        # make sure metrics.jsonl exists
-        with open(f'{out_dir}/metrics.jsonl', 'a') as f:
-            pass
+        eval_dataset = HuggingfaceStreamDatasetValidation(dataset_name, audio=True)
 
     if not eval_only:
         train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps, audio=True, loop=True)
@@ -197,48 +191,25 @@ def train(
     @torch.no_grad()
     def run_evals():
         model.eval()
+        eval_dataloader = DataLoader(eval_dataset, batch_size=batch_size, collate_fn=AudioTrainBatch.collate_fn)
         
-        print("Running evals skipped")
-        # packer = Packer(max_seq_len, model_tester.gather_dataset(test_all))
+        loss = 0.0
+        num_batches = 0
         
-        # collate_fn = EvalBatch.packs_to_batch_factory(
-        #     train=False,
-        #     causal=True,
-        #     max_seq_len=max_seq_len,
-        #     batch_size=batch_size
-        # )
-        
-        # dataloader = DataLoader(packer, batch_size=batch_size, collate_fn=collate_fn)
-        # dataloader_iter = iter(dataloader)
+        for batch in eval_dataloader:
+            batch = batch.to(device)
+            with ctx:
+                _, _, _, loss = model(batch.inputs_text, batch.targets_text, batch.inputs_audio_1, batch.inputs_audio_2, batch.targets_audio_1, batch.targets_audio_2)
 
-        # st, ll, stl, prev_batch = None, None, None, EvalBatch(None, None, None, None, None, None, None, [[]], None)
-        # batch = next(dataloader_iter).to(device)
-    
-        # eval_tokens_per_second_timer = TokensPerSecondTimer(batch_size * max_seq_len)
-
-        # while len(batch.packs[0]) > 0 or len(prev_batch.packs[0]) > 0:
-        #     with ctx:
-        #         logits, _ = model(batch.inputs, targets=batch.targets)
-
-        #     todo = report_logits(st, ll, stl, prev_batch.packs)
-        #     packer.add_to_queue(todo)
-
-        #     prev_batch = batch
-        #     batch = next(dataloader_iter).to(device)
-
-        #     st, stl = model.sample_top_p_selective(logits, prev_batch.generate_positions, temperature, top_p)
-        #     ll = model.loglikelihood_selective(logits, prev_batch.targets, prev_batch.target_pos_mask)
+            loss += loss.item()
+            num_batches += 1
             
-        #     st, ll, stl = st.cpu(), ll.cpu(), stl.cpu()
-        #     logits = None
-            
-        #     tokens_per_second = eval_tokens_per_second_timer()
-        #     # print(f'eval: {tokens_per_second:.0f} tokens/s, packer: {packer}, batch: {batch}', end='\r', flush=True)
-        #     print(f'eval: {tokens_per_second:.0f} tokens/s  ', end='\r', flush=True)
-        # print()
+        loss /= num_batches
         
         model.train()
-        return test_all()         
+        return {
+            "eval_loss": loss,
+        }
 
     # learning rate decay scheduler (cosine with warmup)
     def get_lr(it):
@@ -266,7 +237,6 @@ def train(
     if wandb_log and master_process:
         import wandb
         wandb.init(project=wandb_project, name=wandb_run_name, config=config, group=wandb_run_group)
-        wandb.save(f"{out_dir}/metrics.jsonl", policy="live")
 
     checkpoints = []
     # training loop
@@ -292,9 +262,6 @@ def train(
                 "lr": lr,
                 **run_evals(),
             }
-            
-            with open(f"{out_dir}/metrics.jsonl", "a") as f:
-                f.write(json.dumps(metrics) + "\n")
             
             print(f"step {iter_num}")
             for k, v in metrics.items():

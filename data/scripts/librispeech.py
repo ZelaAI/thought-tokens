@@ -13,7 +13,8 @@ def _generate_examples(files, local_extracted_archive):
                 id_ = path.split("/")[-1][: -len(".flac")]
                 audio_data[id_] = f.read()
             elif path.endswith(".trans.txt"):
-                for line in f:
+                for line in f:1027
+                
                     if line:
                         line = line.decode("utf-8").strip()
                         id_, transcript = line.split(" ", 1)

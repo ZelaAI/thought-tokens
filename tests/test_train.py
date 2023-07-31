@@ -17,7 +17,7 @@ def test_train_base():
 
         model_config=GPTConfig.from_pretrained('EleutherAI/pythia-70m'),
         load_from_huggingface='EleutherAI/pythia-70m',
-        dataset_name = "ZelaAI/librispeech_tiny_2048_streamable",
+        dataset_name = "ZelaAI/lj_speech_2048_streamable",
 
         max_iters=3,
         log_interval=1,
