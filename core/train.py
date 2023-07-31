@@ -79,8 +79,8 @@ def train(
 
     # Model State
     iter_num = 0,
-    model_config = GPTConfig.from_pretrained('EleutherAI/pythia-160m'),
-    load_from_huggingface = 'EleutherAI/pythia-160m',
+    model_config = GPTConfig.from_pretrained('EleutherAI/pythia-70m'),
+    load_from_huggingface = 'EleutherAI/pythia-70m',
     load_from_huggingface_revision = 'main',
     load_from_checkpoint = None,
     load_from_checkpoint_local = False,
