@@ -251,12 +251,14 @@ class GPT(nn.Module):
         logits_audio_1 = self.audio_head_1(x)
         logits_audio_2 = self.audio_head_2(x)
                
-        loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1) if targets is not None else None
+        # loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1) if targets is not None else None
         loss_audio_1 = F.cross_entropy(logits_audio_1.view(-1, logits_audio_1.size(-1)), targets_audio_1.view(-1), ignore_index=-1) if targets_audio_1 is not None else None
         loss_audio_2 = F.cross_entropy(logits_audio_2.view(-1, logits_audio_2.size(-1)), targets_audio_2.view(-1), ignore_index=-1) if targets_audio_2 is not None else None
         
-        if loss is not None and loss_audio_1 is not None and loss_audio_2 is not None:
-            loss = loss + loss_audio_1 + loss_audio_2
+        loss = loss_audio_1 + loss_audio_2 
+        # if loss is not None and loss_audio_1 is not None and loss_audio_2 is not None:
+        #     loss = loss + loss_audio_1 + loss_audio_2
+        
         
         return logits, logits_audio_1, logits_audio_2, loss
     
