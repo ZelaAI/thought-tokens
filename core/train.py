@@ -64,8 +64,8 @@ def train(
     tokenizer_name = 'EleutherAI/pythia-410m',
 
     # adamw optimizer
-    max_iters = 30000, # approx 3 epochs
-    learning_rate = 3e-4,
+    max_iters = 40000, # approx 3 epochs
+    learning_rate = 4e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
     beta2 = 0.95,
@@ -74,12 +74,12 @@ def train(
     # learning rate decay settings
     decay_lr = True, # whether to decay the learning rate
     warmup_iters = 1000, # how many steps to warm up for
-    lr_decay_iters = 30000, # should be ~= max_iters per Chinchilla
-    min_lr = 3e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
+    lr_decay_iters = 40000, # should be ~= max_iters per Chinchilla
+    min_lr = 4e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
     iter_num = 0,
-    model_config = GPTConfig.from_pretrained('EleutherAI/pythia-160m'),
+    model_config = GPTConfig.from_pretrained('EleutherAI/pythia-70m'),
     load_from_huggingface = None,
     load_from_huggingface_revision = 'main',
     load_from_checkpoint = None,
