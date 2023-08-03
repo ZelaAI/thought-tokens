@@ -65,7 +65,7 @@ def train(
 
     # adamw optimizer
     max_iters = 10000, # approx 3 epochs
-    learning_rate = 2e-4,
+    learning_rate = 1e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
     beta2 = 0.95,
@@ -75,7 +75,7 @@ def train(
     decay_lr = True, # whether to decay the learning rate
     warmup_iters = 300, # how many steps to warm up for
     lr_decay_iters = 10000, # should be ~= max_iters per Chinchilla
-    min_lr = 2e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
+    min_lr = 1e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
     iter_num = 0,
