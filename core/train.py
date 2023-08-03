@@ -31,6 +31,9 @@ from multiprocessing import Process
 from core.model import GPTConfig, GPT
 import random
 
+model_conf = GPTConfig.from_pretrained('EleutherAI/pythia-70m')
+model_conf.dropout = 0.05
+
 def train(
     # -----------------------------------------------------------------------------
     eval_only = False, # if True, script exits right after the first eval
@@ -79,7 +82,7 @@ def train(
 
     # Model State
     iter_num = 0,
-    model_config = GPTConfig.from_pretrained('EleutherAI/pythia-70m'),
+    model_config = model_conf,
     load_from_huggingface = None,
     load_from_huggingface_revision = 'main',
     load_from_checkpoint = None,

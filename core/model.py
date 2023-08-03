@@ -230,7 +230,7 @@ class GPT(nn.Module):
 
     def forward(self, idx, targets=None, inputs_audio_1=None, inputs_audio_2=None, targets_audio_1=None, targets_audio_2=None):
         device = idx.device
-        b, t = idx.size()
+        b, t = inputs_audio_1.size()
         assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
         # pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) # shape (1, t)
         
@@ -242,6 +242,7 @@ class GPT(nn.Module):
         # sum not average token embeddings for each modality
         # x = self.transformer.wte(idx) + 
         x = self.transformer.wte_audio_1(inputs_audio_1) + self.transformer.wte_audio_2(inputs_audio_2)
+        x = self.transformer.drop(x)
         
         for block in self.transformer.h:
             x = block(x, sin, cos, attn_mask=None)
@@ -256,7 +257,7 @@ class GPT(nn.Module):
         loss_audio_1 = F.cross_entropy(logits_audio_1.view(-1, logits_audio_1.size(-1)), targets_audio_1.view(-1), ignore_index=-1) if targets_audio_1 is not None else None
         loss_audio_2 = F.cross_entropy(logits_audio_2.view(-1, logits_audio_2.size(-1)), targets_audio_2.view(-1), ignore_index=-1) if targets_audio_2 is not None else None
         
-        loss = loss_audio_1 + loss_audio_2 
+        loss = loss_audio_1 + loss_audio_2 if loss_audio_1 is not None and loss_audio_2 is not None else None
         # if loss is not None and loss_audio_1 is not None and loss_audio_2 is not None:
         #     loss = loss + loss_audio_1 + loss_audio_2
         
@@ -371,16 +372,16 @@ class GPT(nn.Module):
             logits_text, logits_audio_1, logits_audio_2, _ = self(idx, None, inputs_audio_1, inputs_audio_2)
 
             # pluck the logits at the final step and scale by desired temperature
-            logits_text = logits_text[:, -1, :]
+            # logits_text = logits_text[:, -1, :]
             logits_audio_1 = logits_audio_1[:, -1, :]
             logits_audio_2 = logits_audio_2[:, -1, :]
 
             # sample from the top-p distribution
-            idx_next = self.sample_top_p(logits_text, temperature, top_p)
+            # idx_next = self.sample_top_p(logits_text, temperature, top_p)
             idx_next_audio_1 = self.sample_top_p(logits_audio_1, temperature, top_p)
             idx_next_audio_2 = self.sample_top_p(logits_audio_2, temperature, top_p)
             # append sampled index to the running sequence and continue
-            idx = torch.cat((idx, idx_next), dim=1)
+            # idx = torch.cat((idx, idx_next), dim=1)
             inputs_audio_1 = torch.cat((inputs_audio_1, idx_next_audio_1), dim=1)
             inputs_audio_2 = torch.cat((inputs_audio_2, idx_next_audio_2), dim=1)
 
