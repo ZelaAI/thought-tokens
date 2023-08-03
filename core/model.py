@@ -61,7 +61,7 @@ class CausalSelfAttention(nn.Module):
                 
         self.rotary_ndims = int((config.n_embd // config.n_head) * config.rotary_pct)
 
-        self.flash = hasattr(torch.nn.functional, 'scaled_dot_product_attention') and self.dropout == 0.0
+        self.flash = hasattr(torch.nn.functional, 'scaled_dot_product_attention')# and self.dropout == 0.0
         if not self.flash:
             print("WARNING: using slow attention. Flash Attention atm needs PyTorch nightly and dropout=0.0")
 
