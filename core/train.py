@@ -53,7 +53,7 @@ def train(
     wandb_run_group = None,
 
     # data
-    dataset_name = 'ZelaAI/lj_speech_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
+    dataset_name = 'ZelaAI/lj_libri_merged_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
 
     gradient_accumulation_steps = 1, # used to simulate larger batch sizes
     batch_size = 32, # if gradient_accumulation_steps > 1, this is the micro-batch size
@@ -65,7 +65,7 @@ def train(
 
     # adamw optimizer
     max_iters = 10000, # approx 3 epochs
-    learning_rate = 5e-4,
+    learning_rate = 4e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
     beta2 = 0.95,
@@ -75,7 +75,7 @@ def train(
     decay_lr = True, # whether to decay the learning rate
     warmup_iters = 300, # how many steps to warm up for
     lr_decay_iters = 10000, # should be ~= max_iters per Chinchilla
-    min_lr = 5e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
+    min_lr = 4e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
     iter_num = 0,
@@ -149,7 +149,7 @@ def train(
         model = torch.compile(unoptimized_model) # pytorch 2.0
 
     if not train_only:
-        eval_dataset = HuggingfaceStreamDatasetValidation(dataset_name, audio=True)
+        eval_dataset = HuggingfaceStreamDatasetValidation('ZelaAI/lj_speech_2048_streamable', audio=True)
 
     if not eval_only:
         train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps, audio=True, loop=True)
