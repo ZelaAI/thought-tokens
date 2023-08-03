@@ -190,7 +190,7 @@ class GPT(nn.Module):
         self.config = config
 
         self.transformer = nn.ModuleDict(dict(
-            wte = nn.Embedding(config.vocab_size, config.n_embd),
+            # wte = nn.Embedding(config.vocab_size, config.n_embd),
             wte_audio_1 = nn.Embedding(config.audio_vocab_size, config.n_embd),
             wte_audio_2 = nn.Embedding(config.audio_vocab_size, config.n_embd),
             # wpe = nn.Embedding(config.block_size, config.n_embd),
@@ -198,7 +198,7 @@ class GPT(nn.Module):
             h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
             ln_f = nn.LayerNorm(config.n_embd, eps=config.layer_norm_eps),
         ))
-        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        # self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         self.audio_head_1 = nn.Linear(config.n_embd, config.audio_vocab_size, bias=False)
         self.audio_head_2 = nn.Linear(config.n_embd, config.audio_vocab_size, bias=False)
 
@@ -240,14 +240,15 @@ class GPT(nn.Module):
 
         # forward the GPT model itself
         # sum not average token embeddings for each modality
-        x = self.transformer.wte(idx) + self.transformer.wte_audio_1(inputs_audio_1) + self.transformer.wte_audio_2(inputs_audio_2)
+        # x = self.transformer.wte(idx) + 
+        x = self.transformer.wte_audio_1(inputs_audio_1) + self.transformer.wte_audio_2(inputs_audio_2)
         
         for block in self.transformer.h:
             x = block(x, sin, cos, attn_mask=None)
     
         x = self.transformer.ln_f(x)
 
-        logits = self.lm_head(x)
+        logits = None#self.lm_head(x)
         logits_audio_1 = self.audio_head_1(x)
         logits_audio_2 = self.audio_head_2(x)
                

@@ -56,7 +56,7 @@ def train(
     dataset_name = 'ZelaAI/lj_speech_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
 
     gradient_accumulation_steps = 1, # used to simulate larger batch sizes
-    batch_size = 128, # if gradient_accumulation_steps > 1, this is the micro-batch size
+    batch_size = 32, # if gradient_accumulation_steps > 1, this is the micro-batch size
     max_seq_len = 2048,
     TestAllClass=TestAll,
 
@@ -64,7 +64,7 @@ def train(
     tokenizer_name = 'EleutherAI/pythia-410m',
 
     # adamw optimizer
-    max_iters = 3000, # approx 3 epochs
+    max_iters = 10000, # approx 3 epochs
     learning_rate = 2e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
@@ -74,13 +74,13 @@ def train(
     # learning rate decay settings
     decay_lr = True, # whether to decay the learning rate
     warmup_iters = 300, # how many steps to warm up for
-    lr_decay_iters = 3000, # should be ~= max_iters per Chinchilla
+    lr_decay_iters = 10000, # should be ~= max_iters per Chinchilla
     min_lr = 2e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
     iter_num = 0,
     model_config = GPTConfig.from_pretrained('EleutherAI/pythia-70m'),
-    load_from_huggingface = 'EleutherAI/pythia-70m',
+    load_from_huggingface = None,
     load_from_huggingface_revision = 'main',
     load_from_checkpoint = None,
     load_from_checkpoint_local = False,
@@ -92,7 +92,7 @@ def train(
     backend = 'nccl', # 'nccl', 'gloo', etc.
     # system
     device = 'cuda',
-    dtype = torch.float16,
+    dtype = torch.bfloat16,
     compile = True,
 
     **_kwargs
