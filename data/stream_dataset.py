@@ -1,11 +1,11 @@
-from torch.utils.data import IterableDataset
+from torch.utils.data import IterableDataset, Dataset
 from huggingface_hub.file_download import hf_hub_download
 import pandas as pd
 import torch
 import math
 import json
 
-from data.train_sequence import TrainSequence
+from data.train_sequence import TrainSequence, AudioTrainSequence
 
 """
 This is a custom IterableDataset that manually loads shards from a HuggingFace Hub
@@ -15,10 +15,12 @@ We're using this 'special' dataset because the HuggingFace Datasets when
 streamed don't quite have enough info to performantly 'skip' shards.
 """
 class HuggingfaceStreamDataset(IterableDataset):
-    def __init__(self, huggingface_name, skip_to=0):
+    def __init__(self, huggingface_name, skip_to=0, audio=False, loop=False):
         self.huggingface_name = huggingface_name
         self.skip_to = skip_to
-
+        self.audio = audio
+        self.loop = loop
+        
         # start by getting the config
         config_file = hf_hub_download(
             repo_id=self.huggingface_name,
@@ -62,7 +64,7 @@ class HuggingfaceStreamDataset(IterableDataset):
 
         global_index = offset + self.skip_to
 
-        while global_index < self.dataset_length:
+        while True:
             shard_id = global_index // self.shard_size
             shard_offset = global_index % self.shard_size
 
@@ -73,9 +75,48 @@ class HuggingfaceStreamDataset(IterableDataset):
                 self.load_shard(shard_id + 1)
 
             shard = self.shards[shard_id]
+            
+            if self.audio:
+                text_tokens = torch.tensor(shard.iloc[shard_offset]['text_tokens'])
+                audio_tokens_1 = torch.tensor(shard.iloc[shard_offset]['audio_tokens_1'])
+                audio_tokens_2 = torch.tensor(shard.iloc[shard_offset]['audio_tokens_2'])
+                yield AudioTrainSequence(text_tokens, audio_tokens_1, audio_tokens_2)
+            else:
+                tokens = torch.tensor(shard.iloc[shard_offset]['tokens'])
+                yield TrainSequence(tokens)
         
-            tokens = torch.tensor(shard.iloc[shard_offset]['tokens'])
-        
-            yield TrainSequence(tokens)
             
             global_index += increase
+        
+            # Check if we've reached the end of the dataset
+            if global_index >= self.dataset_length:
+                if self.loop:
+                    global_index = offset  # Reset index to beginning if looping is enabled
+                else:
+                    break  # End the loop if we've processed the whole dataset and looping is not enabled
+
+class HuggingfaceStreamDatasetValidation(Dataset):
+    def __init__(self, huggingface_name, audio=False):
+        self.huggingface_name = huggingface_name
+        self.audio = audio
+
+        parquet = hf_hub_download(
+            repo_id=self.huggingface_name,
+            filename="validation.parquet",
+            repo_type="dataset",
+        )
+        assert parquet is not None, f"Couldn't find validation.parquet in {self.huggingface_name}"
+        self.ds = pd.read_parquet(parquet)
+        
+    def __len__(self):
+        return len(self.ds)
+    
+    def __getitem__(self, idx):
+        if self.audio:
+            text_tokens = torch.tensor(self.ds.iloc[idx]['text_tokens'])
+            audio_tokens_1 = torch.tensor(self.ds.iloc[idx]['audio_tokens_1'])
+            audio_tokens_2 = torch.tensor(self.ds.iloc[idx]['audio_tokens_2'])
+            return AudioTrainSequence(text_tokens, audio_tokens_1, audio_tokens_2)
+        else:
+            tokens = torch.tensor(self.ds.iloc[idx]['tokens'])
+            return TrainSequence(tokens)

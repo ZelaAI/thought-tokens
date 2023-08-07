@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import torch
 from typing import List
 
-from core.model import THOUGHT_TOKEN_ID
+THOUGHT_TOKEN_ID = -1
 from data.sequence import Sequence
 
 @dataclass

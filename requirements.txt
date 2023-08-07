@@ -3,3 +3,5 @@ transformers
 wandb
 huggingface_hub
 torch
+soundfile
+librosa

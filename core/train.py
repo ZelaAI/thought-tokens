@@ -3,10 +3,11 @@ import sys
 import time
 import math
 from contextlib import nullcontext
+from core.tokenizer import Tokenizer
 from core.utils import TokensPerSecondTimer, mint_names
 
 from data.packer import Packer
-from data.stream_dataset import HuggingfaceStreamDataset
+from data.stream_dataset import HuggingfaceStreamDataset, HuggingfaceStreamDatasetValidation
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -23,11 +24,11 @@ import json
 from tqdm import tqdm
 from data.evals import ModelTester, TestAll
 from data.eval_sequence import EvalSequence, EvalBatch, report_logits
-from data.train_sequence import TrainSequence, TrainBatch
+from data.train_sequence import AudioTrainBatch, TrainSequence, TrainBatch
 
 from multiprocessing import Process
 
-from core.model import GPTConfig, GPT, Tokenizer
+from core.model import GPTConfig, GPT
 import random
 
 def train(
@@ -36,13 +37,13 @@ def train(
     train_only = False,
 
     # I/O
-    eval_interval = 125,
+    eval_interval = 150,
     log_interval = 1,
 
     # Checkpointing
     out_dir = 'out',
-    checkpoint_interval = 125,
-    upload_checkpoint_interval = 250,
+    checkpoint_interval = 250,
+    upload_checkpoint_interval = 500,
     repo_id = "alexedw/gptx-default",
 
     # wandb logging
@@ -52,19 +53,19 @@ def train(
     wandb_run_group = None,
 
     # data
-    dataset_name = 'ZelaAI/minipile_512_streamable',
+    dataset_name = 'ZelaAI/lj_speech_2048_streamable', # length 82000 -> 82000/24 = 3416 batches -> 1hr per epoch
 
-    gradient_accumulation_steps = 8, # used to simulate larger batch sizes
-    batch_size = 24, # if gradient_accumulation_steps > 1, this is the micro-batch size
-    max_seq_len = 512,
+    gradient_accumulation_steps = 1, # used to simulate larger batch sizes
+    batch_size = 128, # if gradient_accumulation_steps > 1, this is the micro-batch size
+    max_seq_len = 2048,
     TestAllClass=TestAll,
 
     # evals
     tokenizer_name = 'EleutherAI/pythia-410m',
 
     # adamw optimizer
-    max_iters = 10000,
-    learning_rate = 1e-5,
+    max_iters = 3000, # approx 3 epochs
+    learning_rate = 2e-4,
     weight_decay = 0.1,
     beta1 = 0.9,
     beta2 = 0.95,
@@ -72,14 +73,14 @@ def train(
 
     # learning rate decay settings
     decay_lr = True, # whether to decay the learning rate
-    warmup_iters = 1000, # how many steps to warm up for
-    lr_decay_iters = 10000, # should be ~= max_iters per Chinchilla
-    min_lr = 1e-6, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
+    warmup_iters = 300, # how many steps to warm up for
+    lr_decay_iters = 3000, # should be ~= max_iters per Chinchilla
+    min_lr = 2e-5, # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
     # Model State
     iter_num = 0,
-    model_config = GPTConfig.from_pretrained('EleutherAI/pythia-410m'),
-    load_from_huggingface = 'EleutherAI/pythia-410m',
+    model_config = GPTConfig.from_pretrained('EleutherAI/pythia-70m'),
+    load_from_huggingface = 'EleutherAI/pythia-70m',
     load_from_huggingface_revision = 'main',
     load_from_checkpoint = None,
     load_from_checkpoint_local = False,
@@ -93,8 +94,6 @@ def train(
     device = 'cuda',
     dtype = torch.float16,
     compile = True,
-
-    insert_dense_tokens = 12,
 
     **_kwargs
 ):
@@ -142,7 +141,7 @@ def train(
 
     if load_from_huggingface is not None:
         state_dict = GPT.state_dict_from_huggingface(load_from_huggingface, revision=load_from_huggingface_revision)
-        model.load_state_dict(state_dict)
+        model.load_state_dict(state_dict, strict=False)
         state_dict = None
 
     if compile:
@@ -150,17 +149,11 @@ def train(
         model = torch.compile(unoptimized_model) # pytorch 2.0
 
     if not train_only:
-        model_tester = ModelTester(tokenizer, append_dense_tokens=insert_dense_tokens > 0, max_seq_len=max_seq_len)
-
-        test_all = TestAllClass(model_tester)
-        
-        # make sure metrics.jsonl exists
-        with open(f'{out_dir}/metrics.jsonl', 'a') as f:
-            pass
+        eval_dataset = HuggingfaceStreamDatasetValidation(dataset_name, audio=True)
 
     if not eval_only:
-        train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps)
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=TrainBatch.collate_fn, num_workers=2, prefetch_factor=2)
+        train_dataset = HuggingfaceStreamDataset(dataset_name, skip_to=batch_size * iter_num * gradient_accumulation_steps, audio=True, loop=True)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=AudioTrainBatch.collate_fn, num_workers=2, prefetch_factor=2)
         train_dataloader_iter = iter(train_dataloader)
 
         def get_batch():
@@ -174,16 +167,16 @@ def train(
         optimizer = model.configure_optimizers(weight_decay, learning_rate, (beta1, beta2), device)
 
     if load_from_checkpoint is not None:        
-        state_dict = torch.load(hf_hub_download(load_from_checkpoint, "model_state.pt", revision=str(iter_num)), map_location=device)
+        state_dict = torch.load(hf_hub_download(load_from_checkpoint, "model_state.pt", revision='4000'), map_location=device)
         model.load_state_dict(state_dict)
         state_dict = None
         
-        if not eval_only:
-            optimizer_state_dict = torch.load(hf_hub_download(load_from_checkpoint, "optimizer_state.pt", revision=str(iter_num)), map_location=device)
-            optimizer.load_state_dict(optimizer_state_dict)
-            optimizer_state_dict = None
+        # if not eval_only:
+        #     optimizer_state_dict = torch.load(hf_hub_download(load_from_checkpoint, "optimizer_state.pt", revision=str(iter_num)), map_location=device)
+        #     optimizer.load_state_dict(optimizer_state_dict)
+        #     optimizer_state_dict = None
         # prevent immediate re-upload of checkpoint
-        iter_num += 1
+        # iter_num += 1
         
     if load_from_checkpoint_local:
         model.load_state_dict(torch.load(f"{out_dir}/{iter_num}/model_state.pt", map_location=device))
@@ -198,55 +191,25 @@ def train(
     @torch.no_grad()
     def run_evals():
         model.eval()
+        eval_dataloader = DataLoader(eval_dataset, batch_size=batch_size, collate_fn=AudioTrainBatch.collate_fn)
         
-        packer = Packer(max_seq_len, model_tester.gather_dataset(test_all))
+        loss = 0.0
+        num_batches = 0
         
-        collate_fn = EvalBatch.packs_to_batch_factory(
-            train=False,
-            causal=model_config.causal,
-            max_seq_len=max_seq_len,
-            batch_size=batch_size
-        )
-        
-        dataloader = DataLoader(packer, batch_size=batch_size, collate_fn=collate_fn)
-        dataloader_iter = iter(dataloader)
-
-        st, ll, stl, prev_batch = None, None, None, EvalBatch(None, None, None, None, None, None, None, [[]], None)
-        batch = next(dataloader_iter).to(device)
-    
-        eval_tokens_per_second_timer = TokensPerSecondTimer(batch_size * max_seq_len)
-
-        while len(batch.packs[0]) > 0 or len(prev_batch.packs[0]) > 0:
-            dense_input = model.create_dense_inputs(batch.inputs)
-
+        for batch in eval_dataloader:
+            batch = batch.to(device)
             with ctx:
-                # pre-load with dense tokens (max depth 3+1)
-                for i in range(min(batch.max_dense_tokens, 3)):
-                    _, dense_out, _ = model(batch.inputs, dense=dense_input, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom, pos_mask=batch.pos_mask)
+                _, _, _, loss = model(batch.inputs_text, batch.targets_text, batch.inputs_audio_1, batch.inputs_audio_2, batch.targets_audio_1, batch.targets_audio_2)
 
-                    dense_input = model.create_dense_inputs(batch.inputs, dense_out, batch.target_pos_mask)
-
-                logits, _, _ = model(batch.inputs, dense=dense_input, targets=batch.targets, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom, pos_mask=batch.pos_mask)
-
-            todo = report_logits(st, ll, stl, prev_batch.packs)
-            packer.add_to_queue(todo)
-
-            prev_batch = batch
-            batch = next(dataloader_iter).to(device)
-
-            st, stl = model.sample_top_p_selective(logits, prev_batch.generate_positions, temperature, top_p)
-            ll = model.loglikelihood_selective(logits, prev_batch.targets, prev_batch.target_pos_mask)
+            loss += loss.item()
+            num_batches += 1
             
-            st, ll, stl = st.cpu(), ll.cpu(), stl.cpu()
-            logits = None
-            
-            tokens_per_second = eval_tokens_per_second_timer()
-            # print(f'eval: {tokens_per_second:.0f} tokens/s, packer: {packer}, batch: {batch}', end='\r', flush=True)
-            print(f'eval: {tokens_per_second:.0f} tokens/s  ', end='\r', flush=True)
-        print()
+        loss /= num_batches
         
         model.train()
-        return test_all()         
+        return {
+            "eval_loss": loss,
+        }
 
     # learning rate decay scheduler (cosine with warmup)
     def get_lr(it):
@@ -274,7 +237,6 @@ def train(
     if wandb_log and master_process:
         import wandb
         wandb.init(project=wandb_project, name=wandb_run_name, config=config, group=wandb_run_group)
-        wandb.save(f"{out_dir}/metrics.jsonl", policy="live")
 
     checkpoints = []
     # training loop
@@ -298,13 +260,8 @@ def train(
             metrics = {
                 "iter": iter_num,
                 "lr": lr,
-                "inject_weights": torch.relu(model.dense_inject.state_dict()['inject_weights']).tolist(),
-                "capture_weights": torch.softmax(model.dense_capture.state_dict()['capture_weights'], dim=0).tolist(),
                 **run_evals(),
             }
-            
-            with open(f"{out_dir}/metrics.jsonl", "a") as f:
-                f.write(json.dumps(metrics) + "\n")
             
             print(f"step {iter_num}")
             for k, v in metrics.items():
@@ -346,11 +303,12 @@ def train(
                 # Start a new process for the upload
                 upload_process = Process(target=upload_folder_to_hf, args=(api, checkpoint_dir, repo_id, str(iter_num)))
                 upload_process.start()
+                # Start in main process, blocking
+                # upload_folder_to_hf(api, checkpoint_dir, repo_id, str(iter_num))
 
         # forward backward update, with optional gradient accumulation to simulate larger batch size
         # and using the GradScaler if data type is float16
         for micro_step in range(gradient_accumulation_steps):
-            dense_input = model.create_dense_inputs(batch.inputs)
             if ddp:
                 # in DDP training we only need to sync gradients at the last micro step.
                 # the official way to do this is with model.no_sync() context manager, but
@@ -358,13 +316,7 @@ def train(
                 # looking at the source of that context manager, it just toggles this variable
                 model.require_backward_grad_sync = (micro_step == gradient_accumulation_steps - 1)
             with ctx:
-                # pre-load with dense tokens (max depth 3+1)
-                for i in range(min(batch.max_dense_tokens, 3)):
-                    # preloading dense inputs
-                    _, dense_out, _ = model(batch.inputs, dense=dense_input)#, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom)
-                    dense_input = model.create_dense_inputs(batch.inputs, dense_out)
-
-                _, _, loss = model(batch.inputs, dense=dense_input, targets=batch.targets)#, attn_mask_bound_top=batch.attn_mask_bound_top, attn_mask_bound_bottom=batch.attn_mask_bound_bottom)
+                _, _, _, loss = model(batch.inputs_text, batch.targets_text, batch.inputs_audio_1, batch.inputs_audio_2, batch.targets_audio_1, batch.targets_audio_2)
                 
                 loss = loss / gradient_accumulation_steps
             # immediately async prefetch next batch while model is doing the forward pass on the GPU

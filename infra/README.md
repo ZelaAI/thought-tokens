@@ -37,7 +37,12 @@ Execute the following command:
 python infra/runpod.py
 ```
 
-Or to enable debug mode:
+Or to enable debug mode (which will not terminate the instance after execution):
 ```bash
 python infra/runpod.py debug
+```
+
+Or to enable dev mode (which will not terminate the instance, and won't execute any scripts):
+```bash
+python infra/runpod.py dev
 ```

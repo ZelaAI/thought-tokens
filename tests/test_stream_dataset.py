@@ -14,7 +14,7 @@ def test_stream_dataset():
     seen_rows = Counter()
     num_rows = 0
     for row in loader:
-        seen_rows[str(row)] += 1
+        seen_rows[row] += 1
         num_rows += 1
         if num_rows >= 2000:
             break
@@ -23,3 +23,26 @@ def test_stream_dataset():
 
     repeated_rows = [row for row, count in seen_rows.items() if count > 1]
     assert not repeated_rows, f"Repeated rows found: {repeated_rows}"
+
+def test_stream_dataset_multi_epoch():
+    epochs = 3
+    dataset = HuggingfaceStreamDataset(huggingface_name, loop=True)
+    loader = DataLoader(dataset, batch_size=1, num_workers=2, collate_fn=TrainBatch.collate_fn)
+
+    seen_rows = Counter()
+    num_rows = 0
+    epoch_count = 0
+
+    for row in loader:
+        seen_rows[row] += 1
+        num_rows += 1
+
+        # Assuming your dataset size is 2700; adjust if different
+        if num_rows % 2700 == 0:
+            epoch_count += 1
+
+        # Break after 3 full iterations
+        if epoch_count == epochs:
+            break
+
+    assert num_rows >= 2700 * epochs, f"Failed to load {2700 * epochs} rows"
