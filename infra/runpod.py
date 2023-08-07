@@ -117,6 +117,7 @@ def create_spot_pod(gpu_id, bidPerGpu):
               ports: "22/tcp"
               volumeMountPath: "/workspace"
               startSsh: true
+              supportPublicIp: true
               env: [{{ 
                 key: "JUPYTER_PASSWORD", value: "{jupyter_password}",
               }}, {{
@@ -152,6 +153,7 @@ def create_normal_pod(gpu_id):
               dockerArgs: ""
               ports: "22/tcp"
               volumeMountPath: "/workspace"
+              supportPublicIp: true
               startSsh: true
               env: [{{ 
                 key: "JUPYTER_PASSWORD", value: "{jupyter_password}",
@@ -218,6 +220,7 @@ def poll_for_pod(id):
     return desired_pods[0]
 
 def pod_to_ip_port(pod):
+    print(pod)
     for port in pod['runtime']['ports']:
         if port['type'] == 'tcp' and port['isIpPublic']:
             return port['ip'], port['publicPort']
@@ -242,8 +245,13 @@ def terminate_pod(id):
     
 
 def run_job(
-    # gpu = '4090',
-    gpu = 'A100 SXM',
+    # gpu = 'H100 PCIe',
+    # spot=True,
+    # gpu = 'A100 SXM',
+    # gpu = 'A100',
+    # spot=True,
+    gpu = '4090',
+    spot=False,
     script = 'touch test.txt',
     debug = False,
     **kwargs
@@ -255,13 +263,15 @@ def run_job(
     
     gpu_details = get_gpu_by_keyword(gpu)
     gpu_id = gpu_details[0]['id']
-    bidPerGpuHourly = gpu_details[0]['secureSpotPrice']
-    bidPerGpuHourlyNormal = gpu_details[0]['securePrice']
+    bidPerGpuHourly = gpu_details[0]['secureSpotPrice'] or gpu_details[0]['communitySpotPrice']
+    bidPerGpuHourlyNormal = gpu_details[0]['securePrice'] or gpu_details[0]['communityPrice']
 
     print(f'Got GPU details for {gpu_id}, price: ${bidPerGpuHourly}/h SPOT ${bidPerGpuHourlyNormal}/h NORMAL')
     start = time.time()
     
-    new_pod = create_spot_pod(gpu_id, bidPerGpuHourly or 1.0)
+    new_pod = None
+    if spot:
+        new_pod = create_spot_pod(gpu_id, bidPerGpuHourly or 1.0)
     if new_pod is None:
         print('Failed to create spot pod, trying normal pod.')
         bidPerGpuHourly = bidPerGpuHourlyNormal
