@@ -57,14 +57,9 @@ class MultiHeadAttention(nn.Module):
             k = kv_cache[self.key]
             v = kv_cache[self.value]
 
-        # add dummy values to q -> for some reason this is needed... need to figure out why
+        # don't do causal masking if we're only calculation logits for final token in normal attention
         if q.shape[1] < k.shape[1] and xa is None:
             causal=False
-            # q = torch.cat([torch.zeros_like(k[:, 1:, :]), q], dim=1)
-        
-        # print(q[:,-1,:].sum().item(), q.shape, q[:,-1,:].shape)
-        # print(k[:,:,:].sum().item(), k.shape, k[:,:,:].shape)
-        # print(v[:,:,:].sum().item(), v.shape, v[:,:,:].shape)
 
         q = q.view(*q.shape[:2], self.n_head, -1).permute(0, 2, 1, 3) # BS, n_head, seq_len, head_size
         k = k.view(*k.shape[:2], self.n_head, -1).permute(0, 2, 1, 3)
@@ -72,11 +67,6 @@ class MultiHeadAttention(nn.Module):
 
         y = torch.nn.functional.scaled_dot_product_attention(q, k, v, is_causal=causal).permute(0, 2, 1, 3)
 
-        # if added:
-        #     y = y[:, -1, :].unsqueeze(1)
-        # print(y[:,-1,:].sum().item(), y.shape, y[:,-1,:].shape)
-        # print()
-        
         return self.out(y.flatten(start_dim=2))
 
 class ResidualAttentionBlock(nn.Module):
