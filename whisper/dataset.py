@@ -3,6 +3,20 @@ from utils import log_mel_spectrogram, load_audio, pad_or_trim, N_FRAMES
 import torch
 from dataclasses import dataclass
 from typing import List
+import feedparser
+import requests
+import os
+from tqdm import tqdm
+
+def download_url(url):
+    save_path = 'dataset/' + os.path.basename(url)
+    print(f'Downloading {url} to {save_path}')
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    with open(save_path, 'wb') as file:
+        for chunk in tqdm(response.iter_content(chunk_size=8192)):
+            file.write(chunk)
+    return os.path.abspath(save_path)
 
 """
 Simply returns the path to an audio file on disk. For real data, it might need to fetch the file from a remote server.
@@ -16,7 +30,18 @@ class AudioDatasetFake(Dataset):
     
     def __getitem__(self, idx):
         return 'audio.mp3'
+
+class LexDataset(Dataset):
+    def __init__(self):
+        rss_url = 'https://lexfridman.com/feed/podcast/'
+        feed = feedparser.parse(rss_url)
+        self.mp3_urls = [entry.enclosures[0].href for entry in feed.entries if entry.enclosures and entry.enclosures[0].type == 'audio/mpeg']
+
+    def __len__(self):
+        return len(self.mp3_urls)
     
+    def __getitem__(self, idx):
+        return download_url(self.mp3_urls[idx])
     
 class SpectrogramDataset(IterableDataset):
     def __init__(self, audio_dataset):
@@ -41,7 +66,7 @@ class SpectrogramDataset(IterableDataset):
                 yield SpectrogramChunk(inputs=pad_or_trim(spectrogram_chunk, N_FRAMES), id=global_index)
 
             global_index += increase
-            
+
 @dataclass
 class SpectrogramChunk:
     inputs: torch.Tensor
