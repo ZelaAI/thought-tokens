@@ -34,17 +34,48 @@ class MultiHeadAttention(nn.Module):
         self.key = nn.Linear(n_state, n_state, bias=False)
         self.value = nn.Linear(n_state, n_state)
         self.out = nn.Linear(n_state, n_state)
+    
+    def run_and_cache(self, module, inputs, kv_cache):
+        if kv_cache is None:
+            return module(inputs)
         
-    def forward(self, x, xa=None, causal=False):
+        if module not in kv_cache:
+            # save as-is, for the first token or cross attention
+            kv_cache[module] = module(inputs)
+        else:
+            kv_cache[module] = torch.cat([kv_cache[module], module(inputs)], dim=1).detach()
+        
+        return kv_cache[module]
+    
+    def forward(self, x, xa=None, causal=False, kv_cache=None):
         q = self.query(x)
-        k = self.key(x if xa is None else xa) # TODO: Cache these for `xa` 
-        v = self.value(x if xa is None else xa)
+
+        if kv_cache is None or xa is None or self.key not in kv_cache:
+            k = self.run_and_cache(self.key, x if xa is None else xa, kv_cache)
+            v = self.run_and_cache(self.value, x if xa is None else xa, kv_cache)
+        else:
+            k = kv_cache[self.key]
+            v = kv_cache[self.value]
+
+        # add dummy values to q -> for some reason this is needed... need to figure out why
+        if q.shape[1] < k.shape[1] and xa is None:
+            causal=False
+            # q = torch.cat([torch.zeros_like(k[:, 1:, :]), q], dim=1)
         
+        # print(q[:,-1,:].sum().item(), q.shape, q[:,-1,:].shape)
+        # print(k[:,:,:].sum().item(), k.shape, k[:,:,:].shape)
+        # print(v[:,:,:].sum().item(), v.shape, v[:,:,:].shape)
+
         q = q.view(*q.shape[:2], self.n_head, -1).permute(0, 2, 1, 3) # BS, n_head, seq_len, head_size
         k = k.view(*k.shape[:2], self.n_head, -1).permute(0, 2, 1, 3)
         v = v.view(*v.shape[:2], self.n_head, -1).permute(0, 2, 1, 3)
 
         y = torch.nn.functional.scaled_dot_product_attention(q, k, v, is_causal=causal).permute(0, 2, 1, 3)
+
+        # if added:
+        #     y = y[:, -1, :].unsqueeze(1)
+        # print(y[:,-1,:].sum().item(), y.shape, y[:,-1,:].shape)
+        # print()
         
         return self.out(y.flatten(start_dim=2))
 
@@ -65,11 +96,11 @@ class ResidualAttentionBlock(nn.Module):
         )
         self.mlp_ln = nn.LayerNorm(n_state)
 
-    def forward(self, x, xa = None, mask = None):
-        x = x + self.attn(self.attn_ln(x), causal=self.cross_attn is not None)
-    
+    def forward(self, x, xa = None, kv_cache = None):
+        x = x + self.attn(self.attn_ln(x), causal=self.cross_attn is not None, kv_cache=kv_cache)
+
         if self.cross_attn:
-            x = x + self.cross_attn(self.cross_attn_ln(x), xa)
+            x = x + self.cross_attn(self.cross_attn_ln(x), xa, kv_cache=kv_cache)
     
         return x + self.mlp(self.mlp_ln(x))
 
@@ -105,11 +136,12 @@ class TextDecoder(nn.Module):
         self.blocks = nn.ModuleList([ResidualAttentionBlock(n_state, n_head, cross_attention=True) for _ in range(n_layer)])
         self.ln = nn.LayerNorm(n_state)
 
-    def forward(self, x, xa):
-        x = (self.token_embedding(x) + self.positional_embedding[:x.shape[-1]])
+    def forward(self, x, xa, kv_cache=None):
+        offset = next(iter(kv_cache.values())).shape[1] if kv_cache else 0
+        x = (self.token_embedding(x) + self.positional_embedding[offset : offset + x.shape[-1]])
 
         for block in self.blocks:
-            x = block(x, xa)
+            x = block(x, xa, kv_cache=kv_cache)
 
         x = self.ln(x)
         logits = (x @ torch.transpose(self.token_embedding.weight, 0, 1))
@@ -153,18 +185,28 @@ class Whisper(nn.Module):
         return torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
 
 
-    def generate(self, tokens, encoder_logits, max_new_tokens=40):
+    def generate(self, tokens, encoder_logits, max_new_tokens=40, use_cache=False):
+        kv_cache = {} if use_cache else None
+        token_next = tokens.clone()
+
+        
         for _ in range(max_new_tokens):
             # if the sequence context is growing too long we must crop it at block_size
-            logits = self.decoder(tokens, encoder_logits)
+            logits = self.decoder(token_next if use_cache else tokens, encoder_logits, kv_cache)
             
-            # pluck the logits at the final step and scale by desired temperature
+            
+            # pluck the logits at the final step
             logits = logits[:, -1, :]
+            # show average logits
+            # print(logits.mean().item())
             
             # sample from the top-p distribution
-            token_next = self.sample_top_p(logits, 0.1, 0.1)
-            
+            # token_next = self.sample_top_p(logits, 0.1, 0.1)
+            # greedy: sample argmax from the logits
+            token_next = torch.argmax(logits, dim=-1).unsqueeze(-1)
+            # print(token_next)
             # append sampled index to the running sequence and continue
             tokens = torch.cat((tokens, token_next), dim=1)
+        
 
         return tokens
