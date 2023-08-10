@@ -11,6 +11,12 @@ from tqdm import tqdm
 def download_url(url):
     save_path = 'dataset/' + os.path.basename(url)
     print(f'Downloading {url} to {save_path}')
+    
+    # check if file already exists
+    if os.path.exists(save_path):
+        print(f'{save_path} already exists, skipping download')
+        return os.path.abspath(save_path)
+    
     response = requests.get(url, stream=True)
     response.raise_for_status()
     with open(save_path, 'wb') as file:
