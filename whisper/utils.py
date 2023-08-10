@@ -1,5 +1,4 @@
-# BASICALLY COPY OF audio.py
-
+import time
 import os
 from functools import lru_cache
 from subprocess import CalledProcessError, run
@@ -21,6 +20,28 @@ N_FRAMES = N_SAMPLES // HOP_LENGTH  # 3000 frames in a mel spectrogram input
 N_SAMPLES_PER_TOKEN = HOP_LENGTH * 2  # the initial convolutions has stride 2
 FRAMES_PER_SECOND = SAMPLE_RATE // HOP_LENGTH  # 10ms per audio frame
 TOKENS_PER_SECOND = SAMPLE_RATE // N_SAMPLES_PER_TOKEN  # 20ms per audio token
+
+class TokensPerSecondTimer:
+    def __init__(self, tokens_per_call: int = 1):
+        self.last_time = time.time()
+        self.call_count = 0
+        self.running_average = -1
+        self.tokens_per_call = tokens_per_call
+
+    def __call__(self):
+        gap = time.time() - self.last_time
+        tokens_per_second = self.tokens_per_call / gap
+        if self.call_count > 3:
+            # Rolling average
+            self.running_average = self.running_average * 0.9 + tokens_per_second * 0.1
+        elif self.call_count == 3:
+            # Set baseline
+            self.running_average = tokens_per_second
+        
+        self.last_time = time.time()
+        self.call_count += 1
+        
+        return self.running_average        
 
 def load_audio(file: str, sr: int = SAMPLE_RATE):
     """

@@ -26,7 +26,7 @@ class AudioDatasetFake(Dataset):
         pass
     
     def __len__(self):
-        return 5
+        return 8
     
     def __getitem__(self, idx):
         return 'audio.mp3'
@@ -75,8 +75,8 @@ class SpectrogramChunk:
 @dataclass
 class Batch:
     inputs: torch.Tensor
+    base_tokens: torch.Tensor
     ids: List[int]
-    max_dense_tokens: int
 
     def to(self, device):
         if 'cpu' not in device:
