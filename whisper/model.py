@@ -174,6 +174,8 @@ class Whisper(nn.Module):
         # Sample tokens only for active positions
         return torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
 
+    def forward(self, tokens, encoder_logits, max_new_tokens=40, use_cache=False):
+        self.generate(tokens, encoder_logits, max_new_tokens, use_cache)
 
     def generate(self, tokens, encoder_logits, max_new_tokens=40, use_cache=False):
         kv_cache = {} if use_cache else None
@@ -193,7 +195,7 @@ class Whisper(nn.Module):
             # sample from the top-p distribution
             # token_next = self.sample_top_p(logits, 0.1, 0.1)
             # greedy: sample argmax from the logits
-            token_next = torch.argmax(logits, dim=-1).unsqueeze(-1)
+            token_next = torch.argmax(logits, dim=-1).unsqueeze(-1).detach()
             # print(token_next)
             # append sampled index to the running sequence and continue
             tokens = torch.cat((tokens, token_next), dim=1)

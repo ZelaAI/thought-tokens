@@ -32,7 +32,7 @@ class AudioDatasetFake(Dataset):
         pass
     
     def __len__(self):
-        return 8
+        return 72
     
     def __getitem__(self, idx):
         return 'audio.mp3'
